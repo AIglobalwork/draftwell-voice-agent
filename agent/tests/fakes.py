@@ -49,12 +49,12 @@ class FakeCalendar:
 
 
 class RecordingSenders:
-    """Same three async callables as notify.Senders; they record calls instead of sending."""
+    """Same three async methods as notify.Senders; they record calls instead of sending."""
 
     def __init__(self, slack_raises: bool = False, email_raises: bool = False, sms_raises: bool = False):
-        self.emails: list[tuple[str, str, str]] = []
-        self.slack: list[str] = []
-        self.sms: list[tuple[str, str]] = []
+        self.sent_emails: list[tuple[str, str, str]] = []
+        self.sent_slack: list[str] = []
+        self.sent_sms: list[tuple[str, str]] = []
         self._slack_raises = slack_raises
         self._email_raises = email_raises
         self._sms_raises = sms_raises
@@ -62,14 +62,14 @@ class RecordingSenders:
     async def email(self, to: str, subject: str, body: str) -> None:
         if self._email_raises:
             raise RuntimeError("email down")
-        self.emails.append((to, subject, body))
+        self.sent_emails.append((to, subject, body))
 
-    async def slack_send(self, text: str) -> None:
+    async def slack(self, text: str) -> None:
         if self._slack_raises:
             raise RuntimeError("slack down")
-        self.slack.append(text)
+        self.sent_slack.append(text)
 
-    async def sms_send(self, to: str, body: str) -> None:
+    async def sms(self, to: str, body: str) -> None:
         if self._sms_raises:
             raise RuntimeError("sms down")
-        self.sms.append((to, body))
+        self.sent_sms.append((to, body))

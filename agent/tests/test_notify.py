@@ -8,7 +8,6 @@ from draftwell.notify import (
     Delivery,
     Notifier,
     NotifySettings,
-    Senders,
     customer_sms_text,
     owner_booking_text,
     owner_message_text,
@@ -45,10 +44,6 @@ def settings(**overrides) -> NotifySettings:
     return NotifySettings(**values)
 
 
-def make_notifier(s: NotifySettings, rec: RecordingSenders) -> Notifier:
-    return Notifier(s, CFG, senders=Senders(email=rec.email, slack=rec.slack_send, sms=rec.sms_send))
-
-
 def test_customer_text():
     t = customer_sms_text(BOOKING_718, CFG)
     for part in ["Draftwell", "Thu, Dec 3, 8 AM–12 PM", "$718", "final price", "(404) 555-0142"]:
@@ -78,40 +73,40 @@ def test_settings_from_env(monkeypatch):
 
 async def test_sms_skipped_when_disabled():
     rec = RecordingSenders()
-    n = make_notifier(settings(sms_enabled=False), rec)
+    n = Notifier(settings(sms_enabled=False), CFG, senders=rec)
     d = await n.confirm_to_customer(BOOKING_718)
     assert Delivery("sms", "skipped", CUSTOMER.phone) in d
-    assert rec.sms == []
+    assert rec.sent_sms == []
 
 
 async def test_sms_sent_when_enabled():
     rec = RecordingSenders()
-    d = await make_notifier(settings(), rec).confirm_to_customer(BOOKING_718)
+    d = await Notifier(settings(), CFG, senders=rec).confirm_to_customer(BOOKING_718)
     assert Delivery("sms", "sent", CUSTOMER.phone) in d
     assert Delivery("email", "sent", "john@example.com") in d
-    assert rec.sms[0][0] == CUSTOMER.phone and "$718" in rec.sms[0][1]
+    assert rec.sent_sms[0][0] == CUSTOMER.phone and "$718" in rec.sent_sms[0][1]
 
 
 async def test_customer_without_email_gets_no_email():
     customer = Customer("Ann Roe", "+14045550111", "1 Main St, Atlanta, GA", "30307")
     booking = Booking("evt-2", BOOKING_718.slot, customer, QUOTE_718)
     rec = RecordingSenders()
-    d = await make_notifier(settings(), rec).confirm_to_customer(booking)
+    d = await Notifier(settings(), CFG, senders=rec).confirm_to_customer(booking)
     assert [x.channel for x in d] == ["sms"]
-    assert rec.emails == []
+    assert rec.sent_emails == []
 
 
 async def test_notify_owner_sends_email_and_slack():
     rec = RecordingSenders()
-    d = await make_notifier(settings(), rec).notify_owner("New booking from John")
+    d = await Notifier(settings(), CFG, senders=rec).notify_owner("New booking from John")
     assert {(x.channel, x.status, x.recipient) for x in d} == {
         ("email", "sent", "owner@example.com"),
         ("slack", "sent", "owner"),
     }
-    assert rec.slack == ["New booking from John"]
+    assert rec.sent_slack == ["New booking from John"]
 
 
 async def test_failed_channel_does_not_raise():
     rec = RecordingSenders(slack_raises=True)
-    d = await make_notifier(settings(), rec).notify_owner("New booking …")
+    d = await Notifier(settings(), CFG, senders=rec).notify_owner("New booking …")
     assert {(x.channel, x.status) for x in d} == {("slack", "failed"), ("email", "sent")}

@@ -4,10 +4,10 @@ import asyncio
 import logging
 import os
 import smtplib
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable
 from dataclasses import dataclass
 from email.message import EmailMessage
-from typing import Literal
+from typing import Literal, Protocol
 
 import httpx
 
@@ -54,11 +54,12 @@ class Delivery:
     recipient: str
 
 
-@dataclass(frozen=True)
-class Senders:
-    email: Callable[[str, str, str], Awaitable[None]]  # to, subject, body
-    slack: Callable[[str], Awaitable[None]]  # text
-    sms: Callable[[str, str], Awaitable[None]]  # to, body
+class Senders(Protocol):
+    async def email(self, to: str, subject: str, body: str) -> None: ...
+
+    async def slack(self, text: str) -> None: ...
+
+    async def sms(self, to: str, body: str) -> None: ...
 
 
 def customer_sms_text(booking: Booking, config: BusinessConfig) -> str:
@@ -111,26 +112,27 @@ def _send_sms_blocking(settings: NotifySettings, to: str, body: str) -> None:
     client.messages.create(to=to, from_=settings.twilio_from_number, body=body)
 
 
-def real_senders(settings: NotifySettings) -> Senders:
-    async def email(to: str, subject: str, body: str) -> None:
-        await asyncio.to_thread(_send_email_blocking, settings, to, subject, body)
+class RealSenders:
+    def __init__(self, settings: NotifySettings):
+        self.settings = settings
 
-    async def slack(text: str) -> None:
+    async def email(self, to: str, subject: str, body: str) -> None:
+        await asyncio.to_thread(_send_email_blocking, self.settings, to, subject, body)
+
+    async def slack(self, text: str) -> None:
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.post(settings.slack_webhook_url, json={"text": text})
+            response = await client.post(self.settings.slack_webhook_url, json={"text": text})
             response.raise_for_status()
 
-    async def sms(to: str, body: str) -> None:
-        await asyncio.to_thread(_send_sms_blocking, settings, to, body)
-
-    return Senders(email=email, slack=slack, sms=sms)
+    async def sms(self, to: str, body: str) -> None:
+        await asyncio.to_thread(_send_sms_blocking, self.settings, to, body)
 
 
 class Notifier:
     def __init__(self, settings: NotifySettings, config: BusinessConfig, senders: Senders | None = None):
         self.settings = settings
         self.config = config  # company name and phone for the customer text
-        self.senders = senders or real_senders(settings)
+        self.senders = senders or RealSenders(settings)
 
     async def _try(self, channel: Literal["email", "slack", "sms"], recipient: str, send: Awaitable[None]) -> Delivery:
         try:
