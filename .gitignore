@@ -1,0 +1,13 @@
+# Secrets
+.env*
+!.env.example
+
+# Local tooling
+.superpowers/
+.claude/settings.local.json
+
+# Dependencies and caches
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/

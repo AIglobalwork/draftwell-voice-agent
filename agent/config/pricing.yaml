@@ -1,0 +1,15 @@
+# Owner-editable price list (US dollars)
+system_base: 449               # first system, includes the vents below
+included_vents_per_system: 10
+extra_vent: 35
+additional_system: 349         # second and later systems
+dryer_vent: 129
+blower_per_system: 179
+antimicrobial_per_system: 99
+
+# Used when the customer does not know the vent count.
+# First row whose max_sqft is >= the house size wins; null means no limit.
+vent_estimates:
+  - {max_sqft: 1500, vents: 10}
+  - {max_sqft: 2500, vents: 14}
+  - {max_sqft: null, vents: 18}

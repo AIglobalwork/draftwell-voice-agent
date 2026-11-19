@@ -1,0 +1,48 @@
+company_name: Draftwell
+phone: "(404) 555-0142"
+timezone: America/New_York
+
+# Schedule: one crew, two 4-hour slots a day
+work_days: [mon, tue, wed, thu, fri, sat]
+slot_starts: ["08:00", "13:00"]
+slot_hours: 4
+min_days_ahead: 1     # earliest bookable day is tomorrow (local date)
+max_days_ahead: 14
+
+# Demo limit on call length
+max_call_seconds: 300
+
+# Service area ZIP codes
+service_zips:
+  # Atlanta
+  - "30303"
+  - "30305"
+  - "30306"
+  - "30307"
+  - "30308"
+  - "30309"
+  - "30310"
+  - "30312"
+  - "30313"
+  - "30314"
+  - "30316"
+  - "30318"
+  - "30324"
+  - "30326"
+  - "30327"
+  - "30363"
+  # Decatur
+  - "30030"
+  - "30032"
+  - "30033"
+  # Brookhaven
+  - "30319"
+  # Sandy Springs
+  - "30328"
+  - "30350"
+  # Dunwoody
+  - "30338"
+  - "30346"
+  # Smyrna
+  - "30080"
+  - "30082"
