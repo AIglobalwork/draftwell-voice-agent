@@ -20,6 +20,11 @@ def test_two_systems_with_all_addons():
     assert q.total == 1529  # 449+349 + 5×35 + 2×179 + 2×99
 
 
+def test_included_vents_scale_with_systems():  # 2 systems include 20 vents, so 15 has no extra
+    q = calculate_quote(QuoteParams(2, 15, None), PRICES)
+    assert [line.amount for line in q.lines] == [449, 349] and q.total == 798
+
+
 def test_fewer_vents_than_included_has_no_extra_line():
     q = calculate_quote(QuoteParams(1, 6, None), PRICES)
     assert q.total == 449 and len(q.lines) == 1

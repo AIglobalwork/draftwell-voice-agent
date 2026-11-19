@@ -30,6 +30,14 @@ def test_free_slots_removes_only_overlapping():
     assert datetime(2026, 12, 3, 13, tzinfo=ET) in [s.start for s in free]
 
 
+def test_busy_touching_slot_edges_removes_nothing():  # lunch 12:00-13:00 only touches both slots
+    slots = candidate_slots(CFG, datetime(2026, 12, 1, 14, tzinfo=UTC))
+    busy = [(datetime(2026, 12, 3, 12, tzinfo=ET), datetime(2026, 12, 3, 13, tzinfo=ET))]
+    free_starts = [s.start for s in free_slots(slots, busy)]
+    assert datetime(2026, 12, 3, 8, tzinfo=ET) in free_starts
+    assert datetime(2026, 12, 3, 13, tzinfo=ET) in free_starts
+
+
 def test_preferred_sunday_returns_next_open_day():
     slots = candidate_slots(CFG, datetime(2026, 12, 1, 14, tzinfo=UTC))
     assert first_available(slots, date(2026, 12, 6))[0].start == datetime(2026, 12, 7, 8, tzinfo=ET)
