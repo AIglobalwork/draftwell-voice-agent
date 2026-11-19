@@ -46,3 +46,30 @@ class FakeCalendar:
 
     def delete_event(self, event_id: str) -> None:
         self.saved = [e for e in self.saved if e["id"] != event_id]
+
+
+class RecordingSenders:
+    """Same three async callables as notify.Senders; they record calls instead of sending."""
+
+    def __init__(self, slack_raises: bool = False, email_raises: bool = False, sms_raises: bool = False):
+        self.emails: list[tuple[str, str, str]] = []
+        self.slack: list[str] = []
+        self.sms: list[tuple[str, str]] = []
+        self._slack_raises = slack_raises
+        self._email_raises = email_raises
+        self._sms_raises = sms_raises
+
+    async def email(self, to: str, subject: str, body: str) -> None:
+        if self._email_raises:
+            raise RuntimeError("email down")
+        self.emails.append((to, subject, body))
+
+    async def slack_send(self, text: str) -> None:
+        if self._slack_raises:
+            raise RuntimeError("slack down")
+        self.slack.append(text)
+
+    async def sms_send(self, to: str, body: str) -> None:
+        if self._sms_raises:
+            raise RuntimeError("sms down")
+        self.sms.append((to, body))
