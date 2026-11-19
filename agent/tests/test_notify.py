@@ -110,3 +110,9 @@ async def test_failed_channel_does_not_raise():
     rec = RecordingSenders(slack_raises=True)
     d = await Notifier(settings(), CFG, senders=rec).notify_owner("New booking …")
     assert {(x.channel, x.status) for x in d} == {("slack", "failed"), ("email", "sent")}
+
+
+async def test_notify_owner_empty_text_does_not_raise():
+    rec = RecordingSenders()
+    d = await Notifier(settings(), CFG, senders=rec).notify_owner("")
+    assert len(d) == 2

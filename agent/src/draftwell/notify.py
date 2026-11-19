@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import smtplib
+import ssl
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -100,7 +101,7 @@ def _send_email_blocking(settings: NotifySettings, to: str, subject: str, body: 
     msg["Subject"] = subject
     msg.set_content(body)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
-        server.starttls()
+        server.starttls(context=ssl.create_default_context())  # verify the certificate before login
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(msg)
 
@@ -157,7 +158,7 @@ class Notifier:
         return deliveries
 
     async def notify_owner(self, text: str) -> list[Delivery]:
-        subject = "Draftwell: " + text.splitlines()[0][:80]
+        subject = "Draftwell: " + (text.splitlines() or [""])[0][:80]
         owner = self.settings.owner_email
         return [
             await self._try("email", owner, self.senders.email(owner, subject, text)),
