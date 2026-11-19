@@ -9,25 +9,15 @@ from draftwell.scheduling import Slot
 BASE_TIME = datetime(2026, 12, 1, 14, tzinfo=timezone.utc)
 
 
-class EventList(list):
-    """A list of event dicts that can also be called like CalendarClient.events(start, end).
-
-    The brief wants `cal.events` to be a plain list in tests AND a method in the client interface.
-    """
-
-    def __call__(self, start: datetime, end: datetime) -> list[CalendarEvent]:
-        return [CalendarEvent(e["id"], e["created"]) for e in self if e["start"] < end and start < e["end"]]
-
-
 class FakeCalendar:
     def __init__(self, busy: list | None = None, rival: Literal["before", "after"] | None = None):
         self._busy = busy or []
         self._rival = rival
         self._counter = 0  # fake clock: each created event is one minute later
-        self.events = EventList()
+        self.saved: list[dict] = []  # events stored in this fake calendar
 
     def _add(self, event_id: str, summary: str, description: str, slot: Slot, created: datetime) -> None:
-        self.events.append(
+        self.saved.append(
             {
                 "id": event_id,
                 "summary": summary,
@@ -51,5 +41,8 @@ class FakeCalendar:
             self._add("rival", "Rival booking", "", slot, created + offset)
         return event_id
 
+    def events(self, start: datetime, end: datetime) -> list[CalendarEvent]:
+        return [CalendarEvent(e["id"], e["created"]) for e in self.saved if e["start"] < end and start < e["end"]]
+
     def delete_event(self, event_id: str) -> None:
-        self.events[:] = [e for e in self.events if e["id"] != event_id]
+        self.saved = [e for e in self.saved if e["id"] != event_id]

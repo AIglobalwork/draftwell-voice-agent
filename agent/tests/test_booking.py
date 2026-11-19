@@ -22,27 +22,27 @@ def test_book_slot_creates_event():
     cal = FakeCalendar()
     b = book_slot(cal, CFG, datetime(2026, 12, 3, 8, tzinfo=ET), CUSTOMER, QUOTE_718, NOW)
     assert b.slot.end == datetime(2026, 12, 3, 12, tzinfo=ET)
-    assert "John Smith" in cal.events[0]["summary"] and "$718" in cal.events[0]["description"]
+    assert "John Smith" in cal.saved[0]["summary"] and "$718" in cal.saved[0]["description"]
 
 
 def test_book_slot_raises_when_taken():
     cal = FakeCalendar(busy=[(datetime(2026, 12, 3, 8, tzinfo=ET), datetime(2026, 12, 3, 12, tzinfo=ET))])
     with pytest.raises(SlotTakenError):
         book_slot(cal, CFG, datetime(2026, 12, 3, 8, tzinfo=ET), CUSTOMER, QUOTE_718, NOW)
-    assert cal.events == []
+    assert cal.saved == []
 
 
 def test_book_slot_loses_race_deletes_own_event():  # another process booked a moment earlier
     cal = FakeCalendar(rival="before")
     with pytest.raises(SlotTakenError):
         book_slot(cal, CFG, datetime(2026, 12, 3, 8, tzinfo=ET), CUSTOMER, QUOTE_718, NOW)
-    assert [e["summary"] for e in cal.events] == ["Rival booking"]
+    assert [e["summary"] for e in cal.saved] == ["Rival booking"]
 
 
 def test_book_slot_wins_race_keeps_own_event():  # the other process will delete its own event
     cal = FakeCalendar(rival="after")
     b = book_slot(cal, CFG, datetime(2026, 12, 3, 8, tzinfo=ET), CUSTOMER, QUOTE_718, NOW)
-    assert b.event_id in [e["id"] for e in cal.events] and len(cal.events) == 2
+    assert b.event_id in [e["id"] for e in cal.saved] and len(cal.saved) == 2
 
 
 @pytest.mark.parametrize(
