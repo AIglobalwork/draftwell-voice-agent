@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 from livekit.agents import AgentSession
+from google.genai import types
 from livekit.plugins import google
 
 from draftwell.agent import DraftwellAgent
@@ -41,7 +42,7 @@ def make_agent(calendar=None) -> DraftwellAgent:
 
 @pytest.fixture
 async def llm():
-    async with google.LLM(model=MODEL) as model:
+    async with google.LLM(model=MODEL, http_options=types.HttpOptions(timeout=120_000)) as model:  # timeout in ms
         yield model
 
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,15 +21,27 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
+logger = logging.getLogger("draftwell")
+
 server = AgentServer()
 
 
 async def end_call_after(session: AgentSession, seconds: int) -> None:
-    """Demo limit: say goodbye when the call has run too long, then end it."""
+    """Demo limit: say goodbye when the call has run too long, then end it.
+    The realtime model has no separate TTS, so say() does not work; ask the model to speak instead."""
     await asyncio.sleep(seconds)
-    handle = session.say("I have to end our call now because this demo has a time limit. Thank you for calling Draftwell, goodbye!")
-    await handle.wait_for_playout()
-    session.shutdown()
+    try:
+        handle = session.generate_reply(
+            instructions="Tell the caller in one short sentence that the demo time limit is reached, thank them for calling Draftwell and say goodbye."
+        )
+        await handle.wait_for_playout()
+    finally:
+        session.shutdown()  # always end the call, even if the goodbye failed
+
+
+def log_timer_failure(task: asyncio.Task) -> None:
+    if not task.cancelled() and task.exception() is not None:
+        logger.error("Call timer failed: %s", type(task.exception()).__name__)
 
 
 @server.rtc_session(agent_name="draftwell")
@@ -63,6 +76,7 @@ async def entrypoint(ctx: JobContext) -> None:
     )
     await ctx.connect()
     timer = asyncio.create_task(end_call_after(session, config.max_call_seconds))
+    timer.add_done_callback(log_timer_failure)
     ctx.add_shutdown_callback(lambda: _cancel(timer))
 
     await session.generate_reply(
