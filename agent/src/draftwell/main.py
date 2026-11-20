@@ -34,7 +34,7 @@ async def end_call_after(session: AgentSession, seconds: int) -> None:
         handle = session.generate_reply(
             instructions="Tell the caller in one short sentence that the demo time limit is reached, thank them for calling Draftwell and say goodbye."
         )
-        await handle.wait_for_playout()
+        await asyncio.wait_for(handle.wait_for_playout(), 15)  # do not wait forever for the goodbye
     finally:
         session.shutdown()  # always end the call, even if the goodbye failed
 
