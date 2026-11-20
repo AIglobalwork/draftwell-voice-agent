@@ -1,0 +1,116 @@
+"""Conversation tests: the real agent instructions and tools on a Gemini text model (free tier).
+Fake calendar and notifier only. Run with: uv run pytest -m llm -v"""
+
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+from dotenv import load_dotenv
+from livekit.agents import AgentSession
+from livekit.plugins import google
+
+from draftwell.agent import DraftwellAgent
+from draftwell.config import load_business_config, load_price_list
+from draftwell.flows import Deps
+from fakes import FakeCalendar, RecordingNotifier, RecordingPublish
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
+pytestmark = [
+    pytest.mark.llm,
+    pytest.mark.skipif(not os.environ.get("GOOGLE_API_KEY"), reason="GOOGLE_API_KEY is not set"),
+]
+
+CONFIG = Path(__file__).resolve().parent.parent / "config"
+NOW = datetime(2026, 12, 1, 14, tzinfo=UTC)  # Tue Dec 1, 9 AM in Atlanta
+MODEL = os.environ.get("TEST_LLM_MODEL", "gemini-3.5-flash-lite")
+
+
+def make_agent(calendar=None) -> DraftwellAgent:
+    deps = Deps(
+        load_price_list(CONFIG / "pricing.yaml"),
+        load_business_config(CONFIG / "business.yaml"),
+        calendar or FakeCalendar(),
+        RecordingNotifier(),
+        RecordingPublish(),
+        lambda: NOW,
+    )
+    return DraftwellAgent(deps)
+
+
+@pytest.fixture
+async def llm():
+    async with google.LLM(model=MODEL) as model:
+        yield model
+
+
+async def start(llm, calendar=None) -> AgentSession:
+    session = AgentSession(llm=llm)
+    await session.start(make_agent(calendar))
+    return session
+
+
+async def test_quote_comes_from_tool(llm):
+    async with await start(llm) as session:
+        r = await session.run(user_input="ZIP 30307. One system, 14 vents and the dryer vent. How much?")
+        r.expect.contains_function_call(name="get_quote")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="States an estimate of $718 and says the technician confirms the final price on site."
+        )
+
+
+async def test_unknown_vents_asks_square_feet(llm):
+    async with await start(llm) as session:
+        r = await session.run(user_input="ZIP 30307, one system. I don't know how many vents. What would it cost?")
+        with pytest.raises(AssertionError):
+            r.expect.contains_function_call(name="get_quote")
+        await r.expect.next_event(type="message").judge(llm, intent="Asks for the approximate square footage of the home.")
+
+
+async def test_out_of_area_zip(llm):
+    async with await start(llm) as session:
+        r = await session.run(user_input="I live in New York, ZIP 10001. Can you clean my ducts?")
+        r.expect.contains_function_call(name="check_service_area")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="Says the address is outside the service area and does not offer to book an appointment."
+        )
+
+
+async def test_wants_a_person(llm):
+    async with await start(llm) as session:
+        r = await session.run(user_input="I want to talk to a real person, not a robot.")
+        await r.expect.next_event(type="message").judge(llm, intent="Offers to take a message for the owner.")
+
+
+async def test_mold_question(llm):
+    async with await start(llm) as session:
+        r = await session.run(user_input="I see black spots in my vents. Is that mold? Is it dangerous?")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="Does not diagnose the problem or give health advice, and says the technician will assess it on site."
+        )
+
+
+async def test_discount_request(llm):
+    async with await start(llm) as session:
+        await session.run(user_input="ZIP 30307. One system, 10 vents. How much?")
+        r = await session.run(user_input="Can you do it for $300?")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="Does not agree to a price outside the price list; says the price is set or an estimate."
+        )
+
+
+async def test_slot_taken(llm):
+    # rival="before": another booking lands in the same slot first, so book_slot raises SlotTakenError
+    async with await start(llm, FakeCalendar(rival="before")) as session:
+        await session.run(
+            user_input="Hi, I'm John Smith, phone 404 555 0123, 123 Peachtree Street, Atlanta, ZIP 30307. "
+            "One system, 10 vents, no add-ons. What times do you have on Thursday December 3rd?"
+        )
+        r = await session.run(
+            user_input="The Thursday 8 AM slot works. No email. Those details are all correct, please book it now."
+        )
+        r.expect.contains_function_call(name="book_appointment")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="Says the requested time is no longer available and offers other times."
+        )
