@@ -124,3 +124,11 @@ async def test_take_message_notifies_owner(deps):
     t = await take_message(deps, "Mary Lee", "+14045550199", "Call me about a commercial job")
     assert deps.notifier.owner_texts and "Mary Lee" in deps.notifier.owner_texts[0]
     assert deps.publish.events[-1]["type"] == "owner_notification" and "call you back" in t
+
+
+async def test_take_message_when_owner_channels_fail_gives_phone(deps):
+    deps.notifier = RecordingNotifier(owner_fails=True)
+    t = await take_message(deps, "Mary Lee", "+14045550199", "Call me")
+    assert "passed on" not in t and "call you back" not in t
+    assert CFG.phone in t
+    assert deps.publish.events[-1]["type"] == "owner_notification" and deps.publish.events[-1]["delivered"] is False

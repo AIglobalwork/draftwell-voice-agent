@@ -80,15 +80,16 @@ class RecordingSenders:
 class RecordingNotifier:
     """Duck-typed stand-in for notify.Notifier: SMS is off (as in the demo), owner channels succeed."""
 
-    def __init__(self):
+    def __init__(self, owner_fails: bool = False):
         self.owner_texts: list[str] = []
+        self._owner_status = "failed" if owner_fails else "sent"
 
     async def confirm_to_customer(self, booking: Booking) -> list[Delivery]:
         return [Delivery("sms", "skipped", booking.customer.phone)]
 
     async def notify_owner(self, text: str) -> list[Delivery]:
         self.owner_texts.append(text)
-        return [Delivery("email", "sent", "owner"), Delivery("slack", "sent", "owner")]
+        return [Delivery("email", self._owner_status, "owner"), Delivery("slack", self._owner_status, "owner")]
 
 
 class RecordingPublish:

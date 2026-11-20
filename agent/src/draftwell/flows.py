@@ -150,4 +150,9 @@ async def take_message(deps: Deps, name: str, phone: str, message: str) -> str:
     text = owner_message_text(name, phone, message)
     deliveries = await deps.notifier.notify_owner(text)
     await _publish(deps, "owner_notification", text, deliveries, None)
+    if not any(d.status == "sent" for d in deliveries):
+        return (
+            "The message could not be delivered. Apologize, and give the caller our phone number "
+            f"to call directly: {deps.config.phone}."
+        )
     return "The message was passed on. Tell the caller that the owner will call you back soon."
