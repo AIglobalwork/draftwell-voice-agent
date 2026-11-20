@@ -28,12 +28,12 @@ NOW = datetime(2026, 12, 1, 14, tzinfo=UTC)  # Tue Dec 1, 9 AM in Atlanta
 MODEL = os.environ.get("TEST_LLM_MODEL", "gemini-3.5-flash-lite")
 
 
-def make_agent(calendar=None) -> DraftwellAgent:
+def make_agent(calendar=None, notifier=None) -> DraftwellAgent:
     deps = Deps(
         load_price_list(CONFIG / "pricing.yaml"),
         load_business_config(CONFIG / "business.yaml"),
         calendar or FakeCalendar(),
-        RecordingNotifier(),
+        notifier or RecordingNotifier(),
         RecordingPublish(),
         lambda: NOW,
     )
@@ -46,9 +46,9 @@ async def llm():
         yield model
 
 
-async def start(llm, calendar=None) -> AgentSession:
+async def start(llm, calendar=None, notifier=None) -> AgentSession:
     session = AgentSession(llm=llm)
-    await session.start(make_agent(calendar))
+    await session.start(make_agent(calendar, notifier))
     return session
 
 
@@ -114,4 +114,19 @@ async def test_slot_taken(llm):
         r.expect.contains_function_call(name="book_appointment")
         await r.expect.next_event(type="message").judge(
             llm, intent="Says the requested time is no longer available and offers other times."
+        )
+
+
+async def test_message_not_delivered_gives_phone(llm):
+    phone = load_business_config(CONFIG / "business.yaml").phone
+    # owner_fails=True: both email and Slack fail, so the message tool reports it was not delivered
+    async with await start(llm, notifier=RecordingNotifier(owner_fails=True)) as session:
+        await session.run(user_input="I want to talk to a real person.")
+        r = await session.run(
+            user_input="Yes, please take a message. I'm John Smith, phone 404 555 0123. "
+            "Tell the owner I need a call back about a quote. Please send it now."
+        )
+        r.expect.contains_function_call(name="take_message_for_owner")
+        await r.expect.next_event(type="message").judge(
+            llm, intent=f"Apologizes that the message could not be passed on and gives the company phone number {phone}."
         )
