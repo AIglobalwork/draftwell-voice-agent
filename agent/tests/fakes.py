@@ -3,7 +3,9 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
+from draftwell.booking import Booking
 from draftwell.calendar_client import CalendarEvent
+from draftwell.notify import Delivery
 from draftwell.scheduling import Slot
 
 BASE_TIME = datetime(2026, 12, 1, 14, tzinfo=timezone.utc)
@@ -73,3 +75,30 @@ class RecordingSenders:
         if self._sms_raises:
             raise RuntimeError("sms down")
         self.sent_sms.append((to, body))
+
+
+class RecordingNotifier:
+    """Duck-typed stand-in for notify.Notifier: SMS is off (as in the demo), owner channels succeed."""
+
+    def __init__(self):
+        self.owner_texts: list[str] = []
+
+    async def confirm_to_customer(self, booking: Booking) -> list[Delivery]:
+        return [Delivery("sms", "skipped", booking.customer.phone)]
+
+    async def notify_owner(self, text: str) -> list[Delivery]:
+        self.owner_texts.append(text)
+        return [Delivery("email", "sent", "owner"), Delivery("slack", "sent", "owner")]
+
+
+class RecordingPublish:
+    """Async callable that records each panel event."""
+
+    def __init__(self, raises: bool = False):
+        self.events: list[dict] = []
+        self._raises = raises
+
+    async def __call__(self, event: dict) -> None:
+        if self._raises:
+            raise RuntimeError("panel down")
+        self.events.append(event)
