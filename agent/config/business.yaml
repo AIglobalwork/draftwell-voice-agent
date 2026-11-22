@@ -9,6 +9,9 @@ slot_hours: 4
 min_days_ahead: 1     # earliest bookable day is tomorrow (local date)
 max_days_ahead: 14
 
+# No appointments on these days (quote the dates as strings)
+closed_dates: ["2026-11-26", "2026-12-25", "2027-01-01"]
+
 # Demo limit on call length
 max_call_seconds: 300
 

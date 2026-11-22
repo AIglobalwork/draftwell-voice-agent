@@ -1,7 +1,7 @@
 """Load the owner-editable YAML files into small frozen dataclasses."""
 
 from dataclasses import dataclass
-from datetime import time
+from datetime import date, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -40,6 +40,7 @@ class BusinessConfig:
     max_days_ahead: int
     service_zips: frozenset[str]
     max_call_seconds: int
+    closed_dates: frozenset[date]  # no appointments on these days
 
 
 def _read_yaml(path: Path) -> dict:
@@ -66,4 +67,5 @@ def load_business_config(path: Path) -> BusinessConfig:
         max_days_ahead=data["max_days_ahead"],
         service_zips=frozenset(data["service_zips"]),
         max_call_seconds=data["max_call_seconds"],
+        closed_dates=frozenset(date.fromisoformat(d) for d in data["closed_dates"]),
     )

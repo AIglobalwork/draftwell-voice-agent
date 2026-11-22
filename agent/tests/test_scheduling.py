@@ -45,3 +45,10 @@ def test_preferred_sunday_returns_next_open_day():
 
 def test_slot_label():
     assert Slot(datetime(2026, 12, 3, 8, tzinfo=ET), datetime(2026, 12, 3, 12, tzinfo=ET)).label() == "Thu, Dec 3, 8 AM–12 PM"
+
+
+def test_closed_dates_have_no_slots():
+    slots = candidate_slots(CFG, datetime(2026, 11, 24, 14, tzinfo=UTC))  # Thanksgiving is Nov 26
+    days = {s.start.date() for s in slots}
+    assert date(2026, 11, 26) not in days
+    assert date(2026, 11, 25) in days and date(2026, 11, 27) in days

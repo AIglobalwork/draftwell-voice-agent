@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 from pathlib import Path
 
 from draftwell.config import load_business_config, load_price_list
@@ -13,4 +13,5 @@ def test_loads_real_config_files():
     b = load_business_config(CONFIG / "business.yaml")
     assert b.timezone.key == "America/New_York"
     assert b.slot_starts == (time(8), time(13)) and b.slot_hours == 4
+    assert date(2026, 12, 25) in b.closed_dates
     assert 6 not in b.work_days and {"30307", "30030", "30080"} <= b.service_zips

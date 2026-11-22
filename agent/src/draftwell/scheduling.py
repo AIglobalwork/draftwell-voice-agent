@@ -33,7 +33,7 @@ def candidate_slots(config: BusinessConfig, now: datetime) -> list[Slot]:
     slots = []
     for offset in range(config.min_days_ahead, config.max_days_ahead + 1):
         day = today + timedelta(days=offset)
-        if day.weekday() not in config.work_days:
+        if day.weekday() not in config.work_days or day in config.closed_dates:
             continue
         for start_time in config.slot_starts:
             start = datetime.combine(day, start_time, tzinfo=config.timezone)
