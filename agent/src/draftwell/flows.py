@@ -96,6 +96,12 @@ async def find_slots(deps: Deps, preferred_date: str | None) -> str:
             f"We book up to {days} days ahead, and that date is further out. "
             f"The latest available slots are below. Offer them.\n{_alternatives_text(free[-3:])}"
         )
+    if preferred is not None and candidates and preferred < candidates[0].start.date():
+        return (
+            "That date is in the past or too soon to book. "
+            f"The earliest bookable slot is {_slot_text(candidates[0])}. Tell the caller, then offer these.\n"
+            f"{_alternatives_text(first_available(free, None))}"
+        )
     return f"Offer these to the caller.\n{_alternatives_text(first_available(free, preferred))}"
 
 

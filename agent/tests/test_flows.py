@@ -120,6 +120,13 @@ async def test_find_slots_beyond_window_says_14_days(deps):
     assert "14 days ahead" in t and "start 2026-12-1" in t
 
 
+@pytest.mark.parametrize("day", ["2026-11-30", "2026-12-01"])  # a past day, and today
+async def test_find_slots_past_or_same_day_says_so(deps, day):
+    t = await find_slots(deps, day)
+    assert "past or too soon" in t and "Wed, Dec 2" in t  # earliest bookable day
+    assert "start 2026-12-02T08:00:00-05:00" in t  # and the earliest slots follow
+
+
 async def test_take_message_notifies_owner(deps):
     t = await take_message(deps, "Mary Lee", "+14045550199", "Call me about a commercial job")
     assert deps.notifier.owner_texts and "Mary Lee" in deps.notifier.owner_texts[0]
