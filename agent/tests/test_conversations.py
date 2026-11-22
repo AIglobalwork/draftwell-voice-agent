@@ -137,3 +137,15 @@ async def test_this_thursday_uses_todays_date(llm):
     async with await start(llm) as session:
         r = await session.run(user_input="Do you have anything this coming Thursday?")
         r.expect.contains_function_call(name="find_available_slots", arguments={"preferred_date": "2026-12-03"})
+
+
+async def test_offers_email_after_slot_choice(llm):
+    async with await start(llm) as session:
+        await session.run(
+            user_input="Hi, I'm John Smith, phone 404 555 0123, 123 Peachtree Street, Atlanta, ZIP 30307. "
+            "One system, 10 vents, no add-ons. What times do you have on Thursday December 3rd?"
+        )
+        r = await session.run(user_input="The Thursday 8 AM slot works for me.")
+        await r.expect.next_event(type="message").judge(
+            llm, intent="Asks whether the caller wants the confirmation by email."
+        )
