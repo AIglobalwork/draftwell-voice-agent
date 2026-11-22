@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from livekit.agents import AgentServer, AgentSession, JobContext, cli, inference, room_io
+from livekit.agents import AgentServer, AgentSession, JobContext, JobProcess, cli, inference, room_io
 from livekit.plugins import ai_coustics
 
 from draftwell.agent import DraftwellAgent
@@ -28,7 +28,30 @@ logger = logging.getLogger("draftwell")
 NOTIFY_WAIT_SECONDS = 20
 SHUTDOWN_TIMEOUT_SECONDS = NOTIFY_WAIT_SECONDS + 5
 
-server = AgentServer(shutdown_process_timeout=SHUTDOWN_TIMEOUT_SECONDS)
+
+def check_service_account_json(proc: JobProcess) -> None:
+    """Runs once in each worker process at startup, so a broken secret shows in the logs before
+    the first call. Logs only the shape of the JSON, never its values."""
+    try:
+        data = json.loads(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", ""))
+    except json.JSONDecodeError as e:
+        logger.error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON (line %d, column %d)", e.lineno, e.colno)
+        return
+    if not isinstance(data, dict):
+        logger.error("GOOGLE_SERVICE_ACCOUNT_JSON is valid JSON but not an object")
+        return
+    key = data.get("private_key")
+    logger.info(
+        "GOOGLE_SERVICE_ACCOUNT_JSON parsed: %d keys, type is service_account: %s, private key looks complete: %s",
+        len(data),
+        data.get("type") == "service_account",
+        isinstance(key, str)
+        and key.startswith("-----BEGIN PRIVATE KEY-----")
+        and key.rstrip().endswith("-----END PRIVATE KEY-----"),
+    )
+
+
+server = AgentServer(shutdown_process_timeout=SHUTDOWN_TIMEOUT_SECONDS, setup_fnc=check_service_account_json)
 
 
 async def end_call_after(session: AgentSession, seconds: int) -> None:

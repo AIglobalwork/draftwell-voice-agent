@@ -369,8 +369,8 @@ async def test_take_message_notifies_owner(deps):
 - Consumes: `Deps` and the `flows` functions
 - Produces: `DraftwellAgent(deps: Deps)` (subclass of `livekit.agents.Agent`; does NOT set `llm` itself, so tests can run it on a text model; `main.py` passes the voice model to `AgentSession(llm=...)`) with `@function_tool` methods `check_service_area`, `get_quote`, `find_available_slots`, `book_appointment`, `take_message_for_owner`, each a one-line delegation to `flows`; `INSTRUCTIONS: str`; `main.py`: `server = AgentServer()`, `@server.rtc_session(agent_name="draftwell")`, `cli.run_app(server)` (follow the livekit-agents 1.8 Voice AI quickstart for exact entrypoint shape).
 
-- [ ] **Step 1:** Write `INSTRUCTIONS`: virtual assistant for Draftwell; collect name, phone, address with ZIP, systems, vents (or square feet), add-ons, preferred day; check ZIP before quoting; prices and times only from tool results; always "estimate, technician confirms the final price on site"; read back details before `book_appointment`; email optional, spelled letter by letter; no mold/repair advice; offer a message for the owner when asked for a person; never agree to discounts.
-- [ ] **Step 2: Write the failing conversation tests** (marker `llm`; text model `google.LLM(model=os.environ.get("TEST_LLM_MODEL", "gemini-3.5-flash-lite"))` with `GOOGLE_API_KEY` as both session LLM and judge; never LiveKit Inference, so no voice credits are spent; skip the module when `GOOGLE_API_KEY` is not set. `gemini-3.8-flash` is a stronger option via `TEST_LLM_MODEL` once it stops returning 503)
+- [x] **Step 1:** Write `INSTRUCTIONS`: virtual assistant for Draftwell; collect name, phone, address with ZIP, systems, vents (or square feet), add-ons, preferred day; check ZIP before quoting; prices and times only from tool results; always "estimate, technician confirms the final price on site"; read back details before `book_appointment`; email optional, spelled letter by letter; no mold/repair advice; offer a message for the owner when asked for a person; never agree to discounts.
+- [x] **Step 2: Write the failing conversation tests** (marker `llm`; text model `google.LLM(model=os.environ.get("TEST_LLM_MODEL", "gemini-3.5-flash-lite"))` with `GOOGLE_API_KEY` as both session LLM and judge; never LiveKit Inference, so no voice credits are spent; skip the module when `GOOGLE_API_KEY` is not set. `gemini-3.8-flash` is a stronger option via `TEST_LLM_MODEL` once it stops returning 503)
 
 ```python
 async def test_quote_comes_from_tool():
@@ -381,10 +381,10 @@ async def test_quote_comes_from_tool():
 
 Check `contains_function_call` against the installed livekit-agents version; if it is missing, advance with `r.expect.next_event(type="function_call")` until `get_quote`. Same shape for: `test_unknown_vents_asks_square_feet` (intent: asks for approximate square footage; no `get_quote` yet), `test_out_of_area_zip` (ZIP 10001; `check_service_area` called; intent: says it is outside the area, does not offer a booking), `test_wants_a_person` (intent: offers to take a message for the owner), `test_mold_question` (intent: no diagnosis, technician will assess on site), `test_discount_request` ("Can you do it for $300?"; intent: does not agree to a price outside the price list), `test_slot_taken` (FakeCalendar becomes busy before booking; intent: says the time is gone and offers other times).
 
-- [ ] **Step 3:** Run `uv run pytest -m llm -v` → FAIL. **Step 4:** Implement `agent.py`, `main.py`. In `main.py`: build `Deps` from env; `publish` sends JSON via `ctx.room.local_participant.send_text(..., topic="draftwell.panel")`; after `max_call_seconds` (300) say goodbye and end the session; voice model = `inference.RealtimeModel(model=os.environ.get("VOICE_MODEL", "google/gemini-3.8-live"), voice="Puck")` passed to `AgentSession(llm=...)`; noise cancellation as in the spike (`room_io.RoomOptions(audio_input=room_io.AudioInputOptions(noise_cancellation=ai_coustics.audio_enhancement(model=ai_coustics.EnhancerModel.QUAIL_VF_S)))`); check the exact import in the LiveKit docs MCP.
-- [ ] **Step 5:** Run `-m llm` → PASS (rephrase instructions, not tests, until they pass).
-- [ ] **Step 6:** Voice check in console mode: full booking by voice; event in calendar; email + Slack arrive. This spends the ~50 min monthly voice budget: one or two calls, not a debugging loop (debug with the text tests).
-- [ ] **Step 7:** Commit: `feat: voice agent with function tools and conversation tests`. **Checkpoint for day 5.**
+- [x] **Step 3:** Run `uv run pytest -m llm -v` → FAIL. **Step 4:** Implement `agent.py`, `main.py`. In `main.py`: build `Deps` from env; `publish` sends JSON via `ctx.room.local_participant.send_text(..., topic="draftwell.panel")`; after `max_call_seconds` (300) say goodbye and end the session; voice model = `inference.RealtimeModel(model=os.environ.get("VOICE_MODEL", "google/gemini-3.8-live"), voice="Puck")` passed to `AgentSession(llm=...)`; noise cancellation as in the spike (`room_io.RoomOptions(audio_input=room_io.AudioInputOptions(noise_cancellation=ai_coustics.audio_enhancement(model=ai_coustics.EnhancerModel.QUAIL_VF_S)))`); check the exact import in the LiveKit docs MCP.
+- [x] **Step 5:** Run `-m llm` → PASS (rephrase instructions, not tests, until they pass).
+- [x] **Step 6 (passed 2026-11-23):** Voice check in console mode: full booking by voice; event in calendar; email + Slack arrive. This spends the ~50 min monthly voice budget: one or two calls, not a debugging loop (debug with the text tests).
+- [x] **Step 7:** Commit: `feat: voice agent with function tools and conversation tests`. **Checkpoint for day 5.**
 
 ### Task 8: Deploy the agent to LiveKit Cloud
 
@@ -392,10 +392,10 @@ Moved here from the deploy task so the agent runs in the cloud as soon as it wor
 
 **Files:** Create `agent/Dockerfile` (from `lk agent create`), `agent/livekit.toml`
 
-- [ ] **Step 1:** Authenticate the `lk` CLI with project API keys, not `lk cloud auth` (it fails with HTTP 400 on Windows): `lk project add` with `--url`, `--api-key`, `--api-secret` from `.env` (the spike already did this), or pass the same global options to each command.
-- [ ] **Step 2:** `lk agent create` in `agent/`; secrets from `.env` (incl. `GOOGLE_SERVICE_ACCOUNT_JSON`, `VOICE_MODEL`), without `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` (LiveKit Cloud injects them). Expected: agent status running in LiveKit Cloud.
-- [ ] **Step 3:** One short call to the deployed agent (e.g. LiveKit Agents Playground), with your local agent stopped. Expected: it answers by voice; `lk agent logs` shows the session.
-- [ ] **Step 4:** Commit: `chore: LiveKit Cloud deploy config`.
+- [x] **Step 1:** Authenticate the `lk` CLI with project API keys, not `lk cloud auth` (it fails with HTTP 400 on Windows): `lk project add` with `--url`, `--api-key`, `--api-secret` from `.env` (the spike already did this), or pass the same global options to each command.
+- [x] **Step 2:** `lk agent create` in `agent/`; secrets from `.env` (incl. `GOOGLE_SERVICE_ACCOUNT_JSON`, `VOICE_MODEL`), without `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` (LiveKit Cloud injects them). Expected: agent status running in LiveKit Cloud.
+- [x] **Step 3:** One short call to the deployed agent (e.g. LiveKit Agents Playground), with your local agent stopped. Expected: it answers by voice; `lk agent logs` shows the session.
+- [x] **Step 4:** Commit: `chore: LiveKit Cloud deploy config`.
 
 ### Task 9: Website (design B) with call button and live panel
 
