@@ -110,12 +110,12 @@ draftwell/
   - `BusinessConfig(company_name: str, phone: str, timezone: ZoneInfo, work_days: frozenset[int], slot_starts: tuple[time, ...], slot_hours: int, min_days_ahead: int, max_days_ahead: int, service_zips: frozenset[str], max_call_seconds: int)` (`work_days`: 0 = Monday)
   - `load_price_list(path: Path) -> PriceList`, `load_business_config(path: Path) -> BusinessConfig`
 
-- [ ] **Step 1:** `git init`, GitHub repo `draftwell-voice-agent` (already created; private until the author decides otherwise). `.gitignore` includes `.env*`, `!.env.example`, `.superpowers/`, `node_modules/`, `.venv/`, `__pycache__/`.
-- [ ] **Step 2:** `CLAUDE.md` states: the Global Constraints above; "run `uv run pytest -m 'not llm'` before every commit"; "business logic goes in plain modules, tools in `agent.py` stay thin"; "never commit secrets".
-- [ ] **Step 3:** `.env.example` keys: `LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, GOOGLE_API_KEY (AI Studio, free tier; text conversation tests only), VOICE_MODEL (default `google/gemini-3.8-live`), TEST_LLM_MODEL (default `gemini-3.5-flash-lite`; `gemini-3.8-flash` is an option once it stops returning 503), GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_JSON, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, OWNER_EMAIL, SLACK_WEBHOOK_URL, SMS_ENABLED, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, OWNER_PHONE`.
-- [ ] **Step 4:** `pyproject.toml`: deps `livekit-agents[google]~=1.8`, `livekit-plugins-ai-coustics~=0.3`, `google-api-python-client`, `google-auth`, `httpx`, `pyyaml`, `twilio`, `python-dotenv`; dev `pytest`, `pytest-asyncio`; pytest `asyncio_mode = "auto"`, marker `llm`; `[tool.uv] constraint-dependencies = ["yarl<1.24"]` as in the spike (yarl 1.24.1 has no wheel for Python 3.11+).
-- [ ] **Step 5:** Write `pricing.yaml` and `business.yaml` with the Global Constraints values (`slot_starts: ["08:00", "13:00"]`, `slot_hours: 4`, `work_days: [mon, tue, wed, thu, fri, sat]`, `min_days_ahead: 1`, `max_days_ahead: 14`, `max_call_seconds: 300`, ZIPs for the six cities incl. 30307, 30030, 30319, 30328, 30338, 30080).
-- [ ] **Step 6: Write the failing test**
+- [x] **Step 1:** `git init`, GitHub repo `draftwell-voice-agent` (already created; private until the author decides otherwise). `.gitignore` includes `.env*`, `!.env.example`, `.superpowers/`, `node_modules/`, `.venv/`, `__pycache__/`.
+- [x] **Step 2:** `CLAUDE.md` states: the Global Constraints above; "run `uv run pytest -m 'not llm'` before every commit"; "business logic goes in plain modules, tools in `agent.py` stay thin"; "never commit secrets".
+- [x] **Step 3:** `.env.example` keys: `LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, GOOGLE_API_KEY (AI Studio, free tier; text conversation tests only), VOICE_MODEL (default `google/gemini-3.8-live`), TEST_LLM_MODEL (default `gemini-3.5-flash-lite`; `gemini-3.8-flash` is an option once it stops returning 503), GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_JSON, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, OWNER_EMAIL, SLACK_WEBHOOK_URL, SMS_ENABLED, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, OWNER_PHONE`.
+- [x] **Step 4:** `pyproject.toml`: deps `livekit-agents[google]~=1.8`, `livekit-plugins-ai-coustics~=0.3`, `google-api-python-client`, `google-auth`, `httpx`, `pyyaml`, `twilio`, `python-dotenv`; dev `pytest`, `pytest-asyncio`; pytest `asyncio_mode = "auto"`, marker `llm`; `[tool.uv] constraint-dependencies = ["yarl<1.24"]` as in the spike (yarl 1.24.1 has no wheel for Python 3.11+).
+- [x] **Step 5:** Write `pricing.yaml` and `business.yaml` with the Global Constraints values (`slot_starts: ["08:00", "13:00"]`, `slot_hours: 4`, `work_days: [mon, tue, wed, thu, fri, sat]`, `min_days_ahead: 1`, `max_days_ahead: 14`, `max_call_seconds: 300`, ZIPs for the six cities incl. 30307, 30030, 30319, 30328, 30338, 30080).
+- [x] **Step 6: Write the failing test**
 
 ```python
 def test_loads_real_config_files():
@@ -128,9 +128,9 @@ def test_loads_real_config_files():
     assert 6 not in b.work_days and {"30307", "30030", "30080"} <= b.service_zips
 ```
 
-- [ ] **Step 7:** Run `uv run pytest tests/test_config.py -v` → FAIL (import error).
-- [ ] **Step 8:** Implement `config.py` (frozen dataclasses, `yaml.safe_load`, day names → ints).
-- [ ] **Step 9:** Run → PASS. Commit: `chore: project skeleton, docs and config loading`.
+- [x] **Step 7:** Run `uv run pytest tests/test_config.py -v` → FAIL (import error).
+- [x] **Step 8:** Implement `config.py` (frozen dataclasses, `yaml.safe_load`, day names → ints).
+- [x] **Step 9:** Run → PASS. Commit: `chore: project skeleton, docs and config loading`.
 
 ### Task 2: Pricing
 
@@ -140,7 +140,7 @@ def test_loads_real_config_files():
 - Consumes: `PriceList`
 - Produces: `QuoteParams(systems: int, vents: int | None, square_feet: int | None, dryer_vent: bool = False, blower: bool = False, antimicrobial: bool = False)`, `QuoteLine(label: str, amount: int)`, `Quote(lines: tuple[QuoteLine, ...], total: int, vents_estimated: bool)`, `estimate_vents(square_feet: int, prices: PriceList) -> int`, `calculate_quote(params: QuoteParams, prices: PriceList) -> Quote`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_site_example_is_718():            # matches the website and the hero dialog
@@ -170,9 +170,9 @@ def test_invalid_params_raise(params):
         calculate_quote(params, PRICES)
 ```
 
-- [ ] **Step 2:** Run `uv run pytest tests/test_pricing.py -v` → FAIL.
-- [ ] **Step 3:** Implement. Line labels: `"Whole system, first 10 vents"`, `"Additional system ×N"`, `"N extra vents"`, `"Dryer vent"`, `"Blower ×N"`, `"Antimicrobial ×N"`.
-- [ ] **Step 4:** Run → PASS. Commit: `feat: price calculation from price list`.
+- [x] **Step 2:** Run `uv run pytest tests/test_pricing.py -v` → FAIL.
+- [x] **Step 3:** Implement. Line labels: `"Whole system, first 10 vents"`, `"Additional system ×N"`, `"N extra vents"`, `"Dryer vent"`, `"Blower ×N"`, `"Antimicrobial ×N"`.
+- [x] **Step 4:** Run → PASS. Commit: `feat: price calculation from price list`.
 
 ### Task 3: Service area and scheduling
 
@@ -187,7 +187,7 @@ def test_invalid_params_raise(params):
   - `free_slots(candidates: list[Slot], busy: list[tuple[datetime, datetime]]) -> list[Slot]`
   - `first_available(slots: list[Slot], preferred: date | None, limit: int = 3) -> list[Slot]` (slots on `preferred` first; if none that day, the nearest later ones)
 
-- [ ] **Step 1: Write the failing tests** (`ET = ZoneInfo("America/New_York")`)
+- [x] **Step 1: Write the failing tests** (`ET = ZoneInfo("America/New_York")`)
 
 ```python
 @pytest.mark.parametrize("raw,expected", [("30307", "30307"), ("30307-1234", "30307"), (" 30 307 ", "30307"), ("3030", None), ("abcde", None)])
@@ -221,8 +221,8 @@ def test_slot_label():
     assert Slot(datetime(2026, 12, 3, 8, tzinfo=ET), datetime(2026, 12, 3, 12, tzinfo=ET)).label() == "Thu, Dec 3, 8 AM–12 PM"
 ```
 
-- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement (convert `now` to `config.timezone` before taking the date). **Step 4:** Run → PASS.
-- [ ] **Step 5:** Commit: `feat: service area check and slot scheduling`.
+- [x] **Step 2:** Run → FAIL. **Step 3:** Implement (convert `now` to `config.timezone` before taking the date). **Step 4:** Run → PASS.
+- [x] **Step 5:** Commit: `feat: service area check and slot scheduling`.
 
 ### Task 4: Calendar client and booking
 
@@ -240,7 +240,7 @@ def test_slot_label():
   - `book_slot(calendar: CalendarClient, config: BusinessConfig, slot_start: datetime, customer: Customer, quote: Quote, now: datetime) -> Booking`
   - `tests/fakes.py`: `FakeCalendar(busy: list | None = None, rival: Literal["before", "after"] | None = None)` with `.events: list[dict]` (each has `id`, `summary`, `description`, `start`, `end`, `created`). `rival` simulates another session that passed the same free-slot check: on `create_event`, the fake also adds an event `"Rival booking"` in the same slot, created 1 s before (`"before"`) or after (`"after"`) ours. `busy()` reports only the constructor's `busy` list, so the pre-check passes.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_book_slot_creates_event():
@@ -272,10 +272,10 @@ def test_book_slot_rejects_invalid_start(start):          # wrong hour, Sunday, 
         book_slot(FakeCalendar(), CFG, start, CUSTOMER, QUOTE_718, NOW)
 ```
 
-- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement `book_slot`: validate against `candidate_slots`; if `calendar.busy(slot)` is not empty → `SlotTakenError`; create the event; re-read `calendar.events(slot.start, slot.end)`; if there is more than one and ours is not the earliest by `(created, id)`, `delete_event(ours)` and raise `SlotTakenError`. No in-process lock: sessions may run in separate processes; a code comment says why. Event description lists address, phone, email, quote lines and total. Implement `GoogleCalendarClient` (not unit-tested; covered by Step 5).
-- [ ] **Step 4:** Run → PASS.
-- [ ] **Step 5:** Manual check: a 5-line script with real `.env` books a slot in "Draftwell demo"; the event appears in Google Calendar; delete it.
-- [ ] **Step 6:** Commit: `feat: Google Calendar client and slot booking`.
+- [x] **Step 2:** Run → FAIL. **Step 3:** Implement `book_slot`: validate against `candidate_slots`; if `calendar.busy(slot)` is not empty → `SlotTakenError`; create the event; re-read `calendar.events(slot.start, slot.end)`; if there is more than one and ours is not the earliest by `(created, id)`, `delete_event(ours)` and raise `SlotTakenError`. No in-process lock: sessions may run in separate processes; a code comment says why. Event description lists address, phone, email, quote lines and total. Implement `GoogleCalendarClient` (not unit-tested; covered by Step 5).
+- [x] **Step 4:** Run → PASS.
+- [x] **Step 5:** Manual check: a 5-line script with real `.env` books a slot in "Draftwell demo"; the event appears in Google Calendar; delete it.
+- [x] **Step 6:** Commit: `feat: Google Calendar client and slot booking`.
 
 ### Task 5: Notifications
 
@@ -289,7 +289,7 @@ def test_book_slot_rejects_invalid_start(start):          # wrong hour, Sunday, 
   - `Notifier(settings: NotifySettings, senders: Senders | None = None)` (`Senders` holds `email`, `slack`, `sms` async callables; `None` = real senders) with `async confirm_to_customer(booking) -> list[Delivery]` (email if present, SMS if enabled) and `async notify_owner(text: str) -> list[Delivery]` (email + Slack). Channel senders are injectable callables for tests.
   - `NotifySettings.from_env() -> NotifySettings`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_customer_text():
@@ -313,9 +313,9 @@ async def test_failed_channel_does_not_raise():
     assert {(x.channel, x.status) for x in d} == {("slack", "failed"), ("email", "sent")}
 ```
 
-- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement (SMTP via `asyncio.to_thread(smtplib…)`, Slack via `httpx.AsyncClient.post`, Twilio only when `sms_enabled`). Log failures, never raise.
-- [ ] **Step 4:** Run → PASS. **Step 5:** Manual: send one real owner notification; it arrives in email and Slack.
-- [ ] **Step 6:** Commit: `feat: customer and owner notifications`.
+- [x] **Step 2:** Run → FAIL. **Step 3:** Implement (SMTP via `asyncio.to_thread(smtplib…)`, Slack via `httpx.AsyncClient.post`, Twilio only when `sms_enabled`). Log failures, never raise.
+- [x] **Step 4:** Run → PASS. **Step 5:** Manual: send one real owner notification; it arrives in email and Slack.
+- [x] **Step 6:** Commit: `feat: customer and owner notifications`.
 
 ### Task 6: Tool flows
 
@@ -332,7 +332,7 @@ async def test_failed_channel_does_not_raise():
   - `async book(deps, slot_start: str, customer: Customer, params: QuoteParams) -> str`
   - `async take_message(deps, name: str, phone: str, message: str) -> str`
 
-- [ ] **Step 1: Write the failing tests** (`deps` fixture uses `FakeCalendar`; add `RecordingNotifier` (`.owner_texts`) and `RecordingPublish` (`.events`, async callable) to `tests/fakes.py`)
+- [x] **Step 1: Write the failing tests** (`deps` fixture uses `FakeCalendar`; add `RecordingNotifier` (`.owner_texts`) and `RecordingPublish` (`.events`, async callable) to `tests/fakes.py`)
 
 ```python
 def test_quote_text_has_lines_total_and_estimate_wording(deps):
@@ -358,8 +358,8 @@ async def test_take_message_notifies_owner(deps):
     assert deps.publish.events[-1]["type"] == "owner_notification" and "call you back" in t
 ```
 
-- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement; blocking calendar calls via `asyncio.to_thread`. Return texts state facts only and tell the model what to say next (e.g. "Booked. Tell the caller the time window and that a confirmation is on its way.").
-- [ ] **Step 4:** Run → PASS. Commit: `feat: agent tool flows`.
+- [x] **Step 2:** Run → FAIL. **Step 3:** Implement; blocking calendar calls via `asyncio.to_thread`. Return texts state facts only and tell the model what to say next (e.g. "Booked. Tell the caller the time window and that a confirmation is on its way.").
+- [x] **Step 4:** Run → PASS. Commit: `feat: agent tool flows`.
 
 ### Task 7: Voice agent and conversation tests
 
