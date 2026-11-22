@@ -1,6 +1,7 @@
 """Conversation tests: the real agent instructions and tools on a Gemini text model (free tier).
 Fake calendar and notifier only. Run with: uv run pytest -m llm -v"""
 
+import asyncio
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,6 +27,19 @@ pytestmark = [
 CONFIG = Path(__file__).resolve().parent.parent / "config"
 NOW = datetime(2026, 12, 1, 14, tzinfo=UTC)  # Tue Dec 1, 9 AM in Atlanta
 MODEL = os.environ.get("TEST_LLM_MODEL", "gemini-3.5-flash-lite")
+
+
+# Free tier: 15 model requests per minute. The longest test (two turns with tool calls) makes about 7 requests:
+# turn 1 = tool call(s) + answer (3), turn 2 = tool call + answer (2), judge (1), plus a retry now and then.
+# Without a pause, quick tests burst past that. The longest test took ~50 s alone (earlier run), so with a
+# 15 s pause it uses 7 requests per ~65 s, about 6 per minute; short tests (2-3 requests, ~10 s) about 6-7 per minute.
+PAUSE_SECONDS = float(os.environ.get("LLM_TEST_PAUSE_SECONDS", "15"))
+
+
+@pytest.fixture(autouse=True)
+async def pause_after_test():
+    yield
+    await asyncio.sleep(PAUSE_SECONDS)
 
 
 def make_agent(calendar=None, notifier=None) -> DraftwellAgent:
