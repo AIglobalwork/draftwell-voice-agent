@@ -23,7 +23,12 @@ CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
 logger = logging.getLogger("draftwell")
 
-server = AgentServer()
+# Notifications can take a while (each SMTP send has a 10 s timeout), so give them 20 s at hang-up
+# and raise the framework's shutdown limit (default 10 s) above that, or the process is killed first.
+NOTIFY_WAIT_SECONDS = 20
+SHUTDOWN_TIMEOUT_SECONDS = NOTIFY_WAIT_SECONDS + 5
+
+server = AgentServer(shutdown_process_timeout=SHUTDOWN_TIMEOUT_SECONDS)
 
 
 async def end_call_after(session: AgentSession, seconds: int) -> None:
@@ -81,8 +86,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     async def finish_notifications() -> None:
         # A booking made just before hang-up still gets its emails and Slack message.
-        # The framework gives shutdown callbacks 10 s (shutdown_process_timeout), so wait 8 s at most.
-        await wait_for_background(deps, 8)
+        await wait_for_background(deps, NOTIFY_WAIT_SECONDS)
 
     ctx.add_shutdown_callback(finish_notifications)
 
