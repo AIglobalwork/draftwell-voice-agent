@@ -7,7 +7,7 @@ import pytest
 
 from draftwell.booking import Customer
 from draftwell.config import load_business_config, load_price_list
-from draftwell.flows import Deps, book, check_area, find_slots, quote, take_message
+from draftwell.flows import Deps, book, check_area, find_slots, quote, take_message, wait_for_background
 from draftwell.notify import Notifier, NotifySettings
 from draftwell.pricing import QuoteParams
 from fakes import FakeCalendar, RecordingNotifier, RecordingPublish, RecordingSenders
@@ -61,6 +61,7 @@ async def test_book_recomputes_quote(deps):
 
 async def test_book_publishes_panel_events(deps):
     await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None, dryer_vent=True))
+    await wait_for_background(deps, 5)
     assert [e["type"] for e in deps.publish.events] == ["sms_to_customer", "owner_notification"]
     assert deps.publish.events[0]["delivered"] is False  # SMS disabled in demo
     assert deps.publish.events[1]["delivered"] is True
@@ -150,8 +151,50 @@ async def test_book_logs_timings_without_personal_data(caplog):
     deps = Deps(PRICES, CFG, FakeCalendar(), notifier, RecordingPublish(), lambda: NOW)
     with caplog.at_level(logging.INFO):
         await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+        await wait_for_background(deps, 5)
     text = caplog.text
     assert "Calendar step took" in text
     assert "Notification email sent in" in text and "Notification slack sent in" in text
     for private in ["john@example.com", "owner@example.com", "+14045550123", "hooks.example.com"]:
         assert private not in text
+
+
+def make_slow_deps(delay: float):
+    settings = NotifySettings("smtp.example.com", 587, "bot@example.com", "pw", "owner@example.com",
+                              "https://hooks.example.com/secret", False, "", "", "")
+    senders = RecordingSenders(delay=delay)
+    deps = Deps(PRICES, CFG, FakeCalendar(), Notifier(settings, CFG, senders=senders), RecordingPublish(), lambda: NOW)
+    return deps, senders
+
+
+async def test_book_returns_before_notifications_finish():
+    deps, senders = make_slow_deps(0.2)
+    t = await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    assert "Booked" in t and len(deps.calendar.saved) == 1
+    assert senders.sent_emails == [] and senders.sent_slack == [] and deps.publish.events == []  # still pending
+    await wait_for_background(deps, 5)
+    assert len(senders.sent_emails) == 2 and len(senders.sent_slack) == 1  # customer + owner email, owner Slack
+    assert [e["type"] for e in deps.publish.events] == ["sms_to_customer", "owner_notification"]
+    assert deps.background == set()
+
+
+async def test_wait_for_background_gives_up_after_timeout(caplog):
+    deps, senders = make_slow_deps(1)
+    await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    with caplog.at_level(logging.WARNING):
+        await wait_for_background(deps, 0.05)
+    assert "did not finish" in caplog.text
+    await wait_for_background(deps, 5)  # let the task end so the test leaves nothing running
+
+
+async def test_background_crash_is_logged_not_raised(caplog):
+    deps = make_deps(FakeCalendar())
+
+    async def broken(booking):
+        raise ValueError("secret detail")
+
+    deps.notifier.confirm_to_customer = broken
+    with caplog.at_level(logging.ERROR):
+        await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+        await wait_for_background(deps, 5)
+    assert "ValueError" in caplog.text and "secret detail" not in caplog.text

@@ -14,7 +14,7 @@ from livekit.plugins import ai_coustics
 from draftwell.agent import DraftwellAgent
 from draftwell.calendar_client import GoogleCalendarClient
 from draftwell.config import load_business_config, load_price_list
-from draftwell.flows import Deps
+from draftwell.flows import Deps, wait_for_background
 from draftwell.notify import Notifier, NotifySettings
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
@@ -78,6 +78,13 @@ async def entrypoint(ctx: JobContext) -> None:
     timer = asyncio.create_task(end_call_after(session, config.max_call_seconds))
     timer.add_done_callback(log_timer_failure)
     ctx.add_shutdown_callback(lambda: _cancel(timer))
+
+    async def finish_notifications() -> None:
+        # A booking made just before hang-up still gets its emails and Slack message.
+        # The framework gives shutdown callbacks 10 s (shutdown_process_timeout), so wait 8 s at most.
+        await wait_for_background(deps, 8)
+
+    ctx.add_shutdown_callback(finish_notifications)
 
     await session.generate_reply(
         instructions=f"Greet the caller: say you are the virtual assistant of {config.company_name} and ask how you can help."

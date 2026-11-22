@@ -5,7 +5,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from draftwell.booking import Booking, Customer, InvalidSlotError, SlotTakenError, book_slot
@@ -29,6 +29,7 @@ class Deps:
     notifier: Notifier
     publish: Callable[[dict], Awaitable[None]]  # sends an event to the browser panel
     now: Callable[[], datetime]
+    background: set[asyncio.Task] = field(default_factory=set)  # running notification tasks
 
 
 def _quote_text(quote: Quote) -> str:
@@ -140,11 +141,30 @@ async def book(deps: Deps, slot_start: str, customer: Customer, params: QuotePar
         )
 
     log.info("Calendar step took %.2f s", time.perf_counter() - started)
-    await _notify(deps, booking)
+    # Notifications run in the background: the caller hears the result without waiting for SMTP and Slack.
+    task = asyncio.create_task(_notify_safely(deps, booking))
+    deps.background.add(task)  # keep a reference so the task is not garbage-collected
+    task.add_done_callback(deps.background.discard)
     return (
         f"Booked: {booking.slot.label()}.\n{_quote_text(result)}\n"
         "Tell the caller the time window and that a confirmation is on its way."
     )
+
+
+async def _notify_safely(deps: Deps, booking: Booking) -> None:
+    try:
+        await _notify(deps, booking)
+    except Exception as exc:  # the notifier and _publish never raise, but a background task must not fail silently
+        log.error("Background notification failed: %s", type(exc).__name__)
+
+
+async def wait_for_background(deps: Deps, timeout: float) -> None:
+    """Wait until the pending notifications finish, but not longer than timeout seconds."""
+    if not deps.background:
+        return
+    _, pending = await asyncio.wait(set(deps.background), timeout=timeout)
+    if pending:
+        log.warning("%d background notification task(s) did not finish in %s s", len(pending), timeout)
 
 
 async def _notify(deps: Deps, booking: Booking) -> None:

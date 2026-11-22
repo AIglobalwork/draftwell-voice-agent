@@ -1,5 +1,6 @@
 """Test doubles. FakeCalendar mimics the CalendarClient methods without any network."""
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -53,7 +54,8 @@ class FakeCalendar:
 class RecordingSenders:
     """Same three async methods as notify.Senders; they record calls instead of sending."""
 
-    def __init__(self, slack_raises: bool = False, email_raises: bool = False, sms_raises: bool = False):
+    def __init__(self, slack_raises: bool = False, email_raises: bool = False, sms_raises: bool = False, delay: float = 0):
+        self._delay = delay  # seconds each send takes, to imitate slow SMTP or Slack
         self.sent_emails: list[tuple[str, str, str]] = []
         self.sent_slack: list[str] = []
         self.sent_sms: list[tuple[str, str]] = []
@@ -62,16 +64,19 @@ class RecordingSenders:
         self._sms_raises = sms_raises
 
     async def email(self, to: str, subject: str, body: str) -> None:
+        await asyncio.sleep(self._delay)
         if self._email_raises:
             raise RuntimeError("email down")
         self.sent_emails.append((to, subject, body))
 
     async def slack(self, text: str) -> None:
+        await asyncio.sleep(self._delay)
         if self._slack_raises:
             raise RuntimeError("slack down")
         self.sent_slack.append(text)
 
     async def sms(self, to: str, body: str) -> None:
+        await asyncio.sleep(self._delay)
         if self._sms_raises:
             raise RuntimeError("sms down")
         self.sent_sms.append((to, body))
