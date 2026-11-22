@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -7,8 +8,9 @@ import pytest
 from draftwell.booking import Customer
 from draftwell.config import load_business_config, load_price_list
 from draftwell.flows import Deps, book, check_area, find_slots, quote, take_message
+from draftwell.notify import Notifier, NotifySettings
 from draftwell.pricing import QuoteParams
-from fakes import FakeCalendar, RecordingNotifier, RecordingPublish
+from fakes import FakeCalendar, RecordingNotifier, RecordingPublish, RecordingSenders
 
 CONFIG = Path(__file__).resolve().parent.parent / "config"
 CFG = load_business_config(CONFIG / "business.yaml")
@@ -139,3 +141,17 @@ async def test_take_message_when_owner_channels_fail_gives_phone(deps):
     assert "passed on" not in t and "call you back" not in t
     assert CFG.phone in t
     assert deps.publish.events[-1]["type"] == "owner_notification" and deps.publish.events[-1]["delivered"] is False
+
+
+async def test_book_logs_timings_without_personal_data(caplog):
+    settings = NotifySettings("smtp.example.com", 587, "bot@example.com", "pw", "owner@example.com",
+                              "https://hooks.example.com/secret", False, "", "", "")
+    notifier = Notifier(settings, CFG, senders=RecordingSenders())
+    deps = Deps(PRICES, CFG, FakeCalendar(), notifier, RecordingPublish(), lambda: NOW)
+    with caplog.at_level(logging.INFO):
+        await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    text = caplog.text
+    assert "Calendar step took" in text
+    assert "Notification email sent in" in text and "Notification slack sent in" in text
+    for private in ["john@example.com", "owner@example.com", "+14045550123", "hooks.example.com"]:
+        assert private not in text

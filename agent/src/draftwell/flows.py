@@ -3,6 +3,7 @@ facts, plus what to say next. The model never does arithmetic; prices come from 
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -120,6 +121,7 @@ async def book(deps: Deps, slot_start: str, customer: Customer, params: QuotePar
             first_available(await _free_slots(deps), None)
         )
 
+    started = time.perf_counter()
     try:
         booking = await asyncio.to_thread(book_slot, deps.calendar, deps.config, start, customer, result, deps.now())
     except SlotTakenError:
@@ -137,6 +139,7 @@ async def book(deps: Deps, slot_start: str, customer: Customer, params: QuotePar
             "Apologize, and offer to take a message so the owner can call back."
         )
 
+    log.info("Calendar step took %.2f s", time.perf_counter() - started)
     await _notify(deps, booking)
     return (
         f"Booked: {booking.slot.label()}.\n{_quote_text(result)}\n"

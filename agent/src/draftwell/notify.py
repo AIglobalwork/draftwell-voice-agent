@@ -5,6 +5,7 @@ import logging
 import os
 import smtplib
 import ssl
+import time
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -136,12 +137,16 @@ class Notifier:
         self.senders = senders or RealSenders(settings)
 
     async def _try(self, channel: Literal["email", "slack", "sms"], recipient: str, send: Awaitable[None]) -> Delivery:
+        started = time.perf_counter()
         try:
             await send
         except Exception as exc:  # a failed notification must never break a booking
             # Log only the channel and error type: messages can contain URLs or credentials.
-            log.warning("Notification via %s failed: %s", channel, type(exc).__name__)
+            log.warning(
+                "Notification %s failed (%s) in %.2f s", channel, type(exc).__name__, time.perf_counter() - started
+            )
             return Delivery(channel, "failed", recipient)
+        log.info("Notification %s sent in %.2f s", channel, time.perf_counter() - started)
         return Delivery(channel, "sent", recipient)
 
     async def confirm_to_customer(self, booking: Booking) -> list[Delivery]:
