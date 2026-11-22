@@ -130,3 +130,10 @@ async def test_message_not_delivered_gives_phone(llm):
         await r.expect.next_event(type="message").judge(
             llm, intent=f"Apologizes that the message could not be passed on and gives the company phone number {phone}."
         )
+
+
+async def test_this_thursday_uses_todays_date(llm):
+    # NOW is Tue Dec 1, 2026, so "this coming Thursday" is 2026-12-03
+    async with await start(llm) as session:
+        r = await session.run(user_input="Do you have anything this coming Thursday?")
+        r.expect.contains_function_call(name="find_available_slots", arguments={"preferred_date": "2026-12-03"})

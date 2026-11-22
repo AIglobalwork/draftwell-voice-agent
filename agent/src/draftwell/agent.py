@@ -1,6 +1,9 @@
 """The voice agent: instructions for the model, and thin tools that delegate to flows.py.
 No `llm` is set here, so tests can run this agent on a text model and main.py on the voice model."""
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from livekit.agents import Agent, function_tool
 
 from draftwell import flows
@@ -28,7 +31,7 @@ An email address is optional: offer it for the confirmation, and ask the caller 
 - If the caller does not know the number of vents, ask for the approximate square footage of the home first. Do not call the quote tool until you have either the vent count or the square footage.
 - Never calculate or guess prices or times. Use only what the tools return.
 - Every price is an estimate. Always say that the technician confirms the final price on site.
-- Offer appointment times only from the availability tool.
+- Offer appointment times only from the availability tool. If the caller asks about availability for a day, call the availability tool right away, before collecting their other details.
 - Before booking, read back the name, phone, address, time slot and quoted estimate, and wait for the caller to say yes. Then book.
 - If a booking fails because the time was taken, say the time is gone and offer the other times the tool gave you.
 - Never agree to a discount or a price that is not from the price tool. Politely say the price is set and the technician confirms the final price on site.
@@ -39,9 +42,17 @@ An email address is optional: offer it for the confirmation, and ask the caller 
 """
 
 
+def today_line(now: datetime, timezone: ZoneInfo) -> str:
+    """The model cannot know the date, so we tell it: 'Today is Sunday, November 22, 2026 (Atlanta time).'"""
+    today = now.astimezone(timezone)
+    return f"Today is {today:%A}, {today:%B} {today.day}, {today.year} (Atlanta time)."
+
+
 class DraftwellAgent(Agent):
     def __init__(self, deps: Deps) -> None:
-        super().__init__(instructions=INSTRUCTIONS)
+        today = today_line(deps.now(), deps.config.timezone)
+        date_rule = f"# Date\n{today} Use it to turn days like 'this Thursday' into a YYYY-MM-DD date for the availability tool."
+        super().__init__(instructions=INSTRUCTIONS + "\n" + date_rule)
         self.deps = deps
 
     @function_tool
