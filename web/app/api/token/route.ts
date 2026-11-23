@@ -18,10 +18,13 @@ const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 
+// Explicit dispatch: the agent registered under this name joins every new room.
+const AGENT_NAME = 'draftwell';
+
 // don't cache the results
 export const revalidate = 0;
 
-export async function POST(req: Request) {
+export async function POST() {
   // make an exception for the vercel preview environment
   if (process.env.NODE_ENV !== 'development' && process.env.IS_VERCEL_PREVIEW !== 'true') {
     throw new Error(
@@ -40,11 +43,8 @@ export async function POST(req: Request) {
       throw new Error('LIVEKIT_API_SECRET is not defined');
     }
 
-    // Parse room config from request body.
-    const body = await req.json();
-    const roomConfig = body?.room_config
-      ? RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true })
-      : new RoomConfiguration();
+    // The agent name is fixed on the server. Nothing in the request can change it.
+    const roomConfig = new RoomConfiguration({ agents: [{ agentName: AGENT_NAME }] });
 
     // Generate participant token
     const participantName = 'user';
