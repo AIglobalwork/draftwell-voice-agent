@@ -108,7 +108,11 @@ def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
             raise RuntimeError("VOICE_PROVIDER=google needs GOOGLE_VOICE_API_KEY")
         logger.info("Voice: %s via the Gemini API", GOOGLE_VOICE_MODEL)
         # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
-        return google.realtime.RealtimeModel(model=GOOGLE_VOICE_MODEL, voice="Puck", api_key=api_key, vertexai=False)
+        # api_version="v1beta": google-genai defaults to "v1", where the Live API answers HTTP 404
+        # (checked with scripts/check_gemini_live.py).
+        return google.realtime.RealtimeModel(
+            model=GOOGLE_VOICE_MODEL, voice="Puck", api_key=api_key, vertexai=False, api_version="v1beta"
+        )
     raise ValueError(f"Unknown VOICE_PROVIDER {provider!r}: use 'livekit' or 'google'")
 
 

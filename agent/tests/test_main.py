@@ -214,3 +214,11 @@ def test_voice_provider_is_logged_but_the_key_is_not(voice_env, caplog):
         main.voice_model()
     assert "Voice: gemini-3.8-live via the Gemini API" in caplog.text
     assert VOICE_KEY not in caplog.text
+
+
+def test_google_provider_uses_an_api_version_that_serves_live(voice_env):
+    # Without api_version the plugin falls back to google-genai's default "v1", where the Live API
+    # WebSocket returns HTTP 404; gemini-3.8-live connects on v1beta (scripts/check_gemini_live.py).
+    voice_env.setenv("VOICE_PROVIDER", "google")
+    voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
+    assert main.voice_model()._opts.api_version == "v1beta"
