@@ -7,7 +7,7 @@ import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcrip
 import { AgentDisconnectButton } from '@/components/agents-ui/agent-disconnect-button';
 import { AgentTrackToggle } from '@/components/agents-ui/agent-track-toggle';
 import { useInputControls } from '@/hooks/agents-ui/use-agent-control-bar';
-import { DEMO_VIDEO_URL } from '@/lib/demo';
+import { REPO_URL } from '@/lib/demo';
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -61,10 +61,10 @@ export function CallScreen({ paused, onClose, onPaused }: CallScreenProps) {
             The live demo is paused right now.
           </h1>
           <p className="text-lg leading-snug text-[#D9E7E4]">
-            <a href={DEMO_VIDEO_URL} className="font-semibold text-white underline">
-              Watch the video
+            <a href={REPO_URL} className="font-semibold text-white underline">
+              See how it works
             </a>{' '}
-            to see a call.
+            on GitHub, with screenshots and a transcript of a real call.
           </p>
           <button
             type="button"

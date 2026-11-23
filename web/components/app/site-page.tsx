@@ -1,4 +1,4 @@
-import { DEMO_VIDEO_URL } from '@/lib/demo';
+import { REPO_URL } from '@/lib/demo';
 
 // Sections, copy and colors follow the approved design "B. Service van".
 
@@ -57,10 +57,10 @@ function DemoNote() {
   return (
     <p className="max-w-[28em] text-sm leading-snug text-[#D9E7E4]">
       The live demo runs on a small monthly voice budget. If it&apos;s paused,{' '}
-      <a href={DEMO_VIDEO_URL} className="font-semibold !text-white underline">
-        watch the video
-      </a>
-      .
+      <a href={REPO_URL} className="font-semibold !text-white underline">
+        see how it works
+      </a>{' '}
+      on GitHub.
     </p>
   );
 }
