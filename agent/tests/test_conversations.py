@@ -193,3 +193,21 @@ async def test_ambiguous_slot_choice_is_confirmed(llm):
             intent="Asks the caller to confirm the exact day and time they mean, instead of assuming which slot 'the second one' is.",
         )
 
+
+async def test_after_booking_says_confirmation_is_on_its_way(llm):
+    # Notifications run in the background, so at this point the email has not been sent yet.
+    async with await start(llm) as session:
+        await session.run(
+            user_input=DETAILS + " Please email the confirmation to john at example dot com, that's j o h n. "
+            "What times do you have on Thursday December 3rd?"
+        )
+        r = await session.run(
+            user_input="The Thursday 8 AM slot works. The email is right. All the details are correct, please book it now."
+        )
+        r.expect.contains_function_call(name="book_appointment")
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm,
+            intent="Says the appointment is booked and that the confirmation is on its way. "
+            "Does not say that the confirmation or email has already been sent.",
+        )
+
