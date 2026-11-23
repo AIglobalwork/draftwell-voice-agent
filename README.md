@@ -6,7 +6,9 @@ Small air duct cleaning companies in the US miss a lot of calls. The crew is on 
 
 Draftwell is a fictional Atlanta company. This is a portfolio project. The agent, the website and the tests are all in this repository.
 
-**Stack:** Python 3.12, LiveKit Agents, Gemini Live (speech-to-speech) through LiveKit Inference, Google Calendar API, Gmail SMTP, Slack webhook, Next.js 15 site on Netlify, pytest, Vitest, GitHub Actions.
+**My role:** I chose the problem, the niche and the stack, agreed the design spec and the plan with Claude, ran Claude Code task by task with a separate Claude chat reviewing each step, and made every live call to check the real calendar, emails and Slack. Claude Code wrote the code.
+
+**Stack:** Python 3.12, LiveKit Agents, Gemini 3.8 Live (speech-to-speech) through LiveKit Inference, Google Calendar API, Gmail SMTP, Slack webhook, Next.js 15 site on Netlify, pytest, Vitest, GitHub Actions.
 
 ## Demo
 
@@ -20,7 +22,7 @@ Draftwell is a fictional Atlanta company. This is a portfolio project. The agent
 
 **A real call:** [`docs/call-transcript.md`](docs/call-transcript.md) has a short transcript of a booking call.
 
-**Live site:** https://draftwell-demo.netlify.app. Press "Talk to our AI assistant" and allow the microphone. The live demo runs on free tiers and a preview voice model, so it may be paused or offline. When the monthly voice credits are used up, the agent does not answer and the site says the live demo is paused.
+**Live site:** https://draftwell-demo.netlify.app. Press "Talk to our AI assistant" and allow the microphone. The live demo runs on free tiers and a hosted voice model, so it may be paused or offline. When the monthly voice credits are used up, the agent does not answer and the site says the live demo is paused.
 
 ## What a call does
 
@@ -53,7 +55,7 @@ If the caller wants a person, the agent takes a message for the owner. It does n
   - an ambiguous slot choice;
   - "the confirmation is on its way".
 
-  The last full run passed 15 of 15.
+  The last full run (November 2026) passed 15 of 15.
 - **Web tests:** 7 Vitest tests for the token's scope, panel events, starting a call and the repository link.
 - **CI:** GitHub Actions runs the offline agent tests, the web tests and the web build on every push and pull request.
 
@@ -87,7 +89,7 @@ flowchart LR
 |---|---|
 | [`agent/`](agent) | The voice agent. `main.py` starts the session, `agent.py` has the instructions and thin tools, `flows.py` has the tool logic, the other modules hold prices, scheduling, calendar and notifications. |
 | [`web/`](web) | The company website (Next.js, built from LiveKit's `agent-starter-react` template), the token route and the demo panel. |
-| [`docs/`](docs) | The design spec, the implementation plan, the call transcript and the screenshots. |
+| [`docs/`](docs) | The design spec (English; the Ukrainian original is in `docs/superpowers/specs/`), the implementation plan, the call transcript and the screenshots. |
 | [`CLAUDE.md`](CLAUDE.md) | Project rules for the coding agent. |
 
 ## Key design decisions
@@ -165,7 +167,7 @@ npm test                     # token scope, panel events, call start, repository
 
 - **Offline tests** need no network and no keys. They use a fake calendar and recording senders.
 - **Conversation tests** run the real instructions and tools on a Gemini text model through a free AI Studio key, so they spend no voice credits. They check that the agent calls the right tools and says the right things (an LLM judge checks most replies). The free tier allows 15 requests a minute, so there is a 15 s pause after each test (`LLM_TEST_PAUSE_SECONDS`). A full run takes about 6 minutes. Gemini sometimes answers 503 or 429; a single test can then fail for reasons outside the code.
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the offline agent tests and the web tests and build on every push. The conversation tests are not in CI, because there is no API key on GitHub.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the offline agent tests and the web tests and build on every push and pull request. The conversation tests are not in CI, because there is no API key on GitHub.
 
 ## Deploy
 
@@ -180,7 +182,7 @@ In the US, any SMS an app sends from a 10-digit number needs A2P 10DLC registrat
 ## Limits of the demo
 
 - $2.50 of free LiveKit Inference credits a month for all visitors together (hard cap). When they run out, the live demo is paused until next month.
-- The voice model is a preview model, so the live demo can also be offline when the model is unavailable.
+- The live demo depends on the hosted voice model. If the model is overloaded or down, a call cannot start.
 - A call lasts at most 5 minutes.
 - Bookings go to a dedicated demo calendar. One crew, Monday to Saturday, 8 AM-12 PM and 1 PM-5 PM Atlanta time, from tomorrow up to 14 days ahead, closed on listed holidays.
 - Service area: Atlanta, Decatur, Brookhaven, Sandy Springs, Dunwoody and Smyrna.
@@ -208,4 +210,4 @@ These are next steps. None of them is built in this demo.
 
 ---
 
-Draftwell is a fictional company. This site demonstrates an AI booking assistant.
+Draftwell is a fictional company. Its name, phone number and prices are made up for this demo.

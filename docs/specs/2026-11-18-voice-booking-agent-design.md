@@ -2,7 +2,7 @@
 
 > English version of the Ukrainian original: `docs/superpowers/specs/2026-11-18-duct-voice-agent-design.md`.
 
-Design document · 2026-11-18 · status: awaiting approval
+Design document · 2026-11-18 · status: approved 2026-11-18
 
 ## 1. Why this exists
 
@@ -112,7 +112,7 @@ To the owner: a message by email and Slack
 - (19.11) The README says directly that the live demo has a small monthly voice budget. (23.11: the video part is dropped, see the next point.)
 - (23.11) No video. The README is a long-lived portfolio case study, not a 2-minute pitch: it must prove the work on its own, even when the live demo is offline. So the Demo section has screenshots (the site, a call with both panel cards, the calendar event, the Slack message) and a short real call transcript. The site links to the GitHub repository ("see how it works") instead of a video. The README also has a "Results" section (measured facts only) and "What I would do for a real client" (next steps, not built).
 
-Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh
+Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh (private Claude artifact, not public; the final design is the live site and `docs/images/site.png`)
 
 ## 7. Claude's decisions (the author can change them)
 
