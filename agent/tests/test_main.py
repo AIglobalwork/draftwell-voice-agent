@@ -63,11 +63,12 @@ class FakeInput:
 class FakeSession:
     """Records what the call timer does, in order."""
 
-    def __init__(self, goodbye_handle=None, goodbye_error=None):
+    def __init__(self, goodbye_handle=None, goodbye_error=None, warning_error=None):
         self.events = []
         self.input = FakeInput(self.events)
         self.goodbye_handle = goodbye_handle or FakeHandle()
         self.goodbye_error = goodbye_error
+        self.warning_error = warning_error
 
     def generate_reply(self, instructions):
         if "goodbye" in instructions:
@@ -76,6 +77,8 @@ class FakeSession:
                 raise self.goodbye_error
             return self.goodbye_handle
         self.events.append(("reply", "warning"))
+        if self.warning_error:
+            raise self.warning_error
         return FakeHandle()
 
     def shutdown(self):
@@ -130,6 +133,19 @@ async def test_call_ends_even_if_the_goodbye_fails(fast_sleep):
     with pytest.raises(RuntimeError):
         await main.end_call_after(session, 300)
     assert session.events[-1] == ("shutdown",)
+
+
+async def test_failed_warning_is_logged_and_goodbye_and_shutdown_still_follow(fast_sleep, caplog):
+    session = FakeSession(warning_error=RuntimeError("model down"))
+    with caplog.at_level(logging.WARNING, logger="draftwell"):
+        await main.end_call_after(session, 300)
+    assert "Time warning failed: RuntimeError" in caplog.text
+    assert session.events == [
+        ("reply", "warning"),
+        ("audio", False),
+        ("reply", "goodbye"),
+        ("shutdown",),
+    ]
 
 
 def test_room_is_deleted_when_the_session_ends():

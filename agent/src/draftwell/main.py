@@ -62,11 +62,14 @@ async def end_call_after(session: AgentSession, seconds: int) -> None:
     """Demo limit: warn the caller 30 s before the end, then say goodbye and end the call.
     The realtime model has no separate TTS, so say() does not work; ask the model to speak instead."""
     await asyncio.sleep(seconds - WARNING_BEFORE_END_SECONDS)
-    session.generate_reply(
-        instructions="Tell the caller in one short sentence that about 30 seconds of demo time are left, so let's wrap up."
-    )
-    await asyncio.sleep(WARNING_BEFORE_END_SECONDS)
-    try:
+    try:  # from here on, the call always ends at the limit
+        try:
+            session.generate_reply(
+                instructions="Tell the caller in one short sentence that about 30 seconds of demo time are left, so let's wrap up."
+            )
+        except Exception as e:  # a failed warning must not stop the goodbye and the end of the call
+            logger.warning("Time warning failed: %s", type(e).__name__)
+        await asyncio.sleep(WARNING_BEFORE_END_SECONDS)
         # Gemini Live detects the caller's speech on its server, so allow_interruptions=False is ignored.
         # Muting the caller is what stops a word or a noise from cutting the goodbye short.
         session.input.set_audio_enabled(False)
