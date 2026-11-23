@@ -3,6 +3,7 @@ import json
 import logging
 
 import pytest
+from livekit.agents.utils import is_given
 
 from draftwell import main
 from draftwell.main import check_service_account_json
@@ -163,7 +164,7 @@ def voice_env(monkeypatch):
     # Dummy LiveKit credentials: inference.RealtimeModel needs them to be built (no network is used).
     monkeypatch.setenv("LIVEKIT_API_KEY", "test-livekit-key")
     monkeypatch.setenv("LIVEKIT_API_SECRET", "test-livekit-secret")
-    for name in ("VOICE_PROVIDER", "VOICE_MODEL", "GOOGLE_VOICE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI"):
+    for name in ("VOICE_PROVIDER", "VOICE_MODEL", "GOOGLE_VOICE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI", "VOICE_TURN_DETECTION"):
         monkeypatch.delenv(name, raising=False)
     # The test key for the conversation tests must never be used for voice.
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key-for-text-tests")
@@ -224,12 +225,32 @@ def test_google_provider_uses_an_api_version_that_serves_live(voice_env):
     assert main.voice_model()._opts.api_version == "v1beta"
 
 
-def test_google_provider_leaves_turn_detection_to_livekit(voice_env):
-    # Gemini's own voice activity detection missed a console caller's speech (no ACTIVITY_START for the
-    # first phrase, no ACTIVITY_END for the second), so turns come from the framework's TurnDetector
-    # and local VAD, which send activity_start / activity_end to Gemini.
+
+def google_voice(voice_env, turn_detection=None):
     voice_env.setenv("VOICE_PROVIDER", "google")
     voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
-    model = main.voice_model()
+    if turn_detection is not None:
+        voice_env.setenv("VOICE_TURN_DETECTION", turn_detection)
+    return main.voice_model()
+
+
+@pytest.mark.parametrize("turn_detection", [None, "", "server"])
+def test_google_turns_default_to_geminis_own_detection(voice_env, turn_detection):
+    # As through LiveKit Inference, where the site worked: Gemini's automatic activity detection.
+    voice_env.delenv("VOICE_TURN_DETECTION", raising=False)
+    model = google_voice(voice_env, turn_detection)
+    assert not is_given(model._opts.realtime_input_config)
+    assert model.capabilities.turn_detection is True
+
+
+def test_google_local_turns_come_from_livekit(voice_env):
+    # Gemini's own voice activity detection missed a console caller's speech, so "local" disables it:
+    # the framework's TurnDetector and local VAD send activity_start / activity_end to Gemini.
+    model = google_voice(voice_env, "local")
     assert model._opts.realtime_input_config.automatic_activity_detection.disabled is True
-    assert model.capabilities.turn_detection is False  # the framework now owns turn detection
+    assert model.capabilities.turn_detection is False
+
+
+def test_unknown_turn_detection_fails(voice_env):
+    with pytest.raises(ValueError, match="VOICE_TURN_DETECTION"):
+        google_voice(voice_env, "client")

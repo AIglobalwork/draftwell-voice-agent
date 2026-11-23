@@ -9,7 +9,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from google.genai import types as genai_types
-from livekit.agents import AgentServer, AgentSession, JobContext, JobProcess, cli, inference, room_io
+from livekit.agents import NOT_GIVEN, AgentServer, AgentSession, JobContext, JobProcess, cli, inference, room_io
 from livekit.plugins import ai_coustics, google
 
 from draftwell.agent import DraftwellAgent
@@ -99,41 +99,47 @@ def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
     "livekit" (default): LiveKit Inference, paid from the LiveKit Cloud credits;
     "google": the Gemini API directly, with its own key (GOOGLE_VOICE_API_KEY).
 
-    "google" is experimental (livekit-plugins-google 1.8.13, gemini-3.8-live, turns from LiveKit's
-    turn detection). Known problems from a live console call (2026-11-23):
-    1. Replies lag one turn behind: after activity_end the plugin sends client content with
-       turn_complete=True (generate_reply), and Gemini seems to answer before it has processed
-       the audio of that turn.
-    2. The first words are cut: local VAD starts ~0.4 s before activity_start is sent.
-    3. False interruptions: activity_start and interrupted=True with no local VAD start
-       (mic peak 8-12), just as the model starts a new generation.
+    "google" is experimental (livekit-plugins-google 1.8.13, gemini-3.8-live). VOICE_TURN_DETECTION:
+    "server" (default): Gemini's own automatic activity detection, as through LiveKit Inference,
+        where the site worked. In a console call it missed the caller's speech.
+    "local": Gemini's detection disabled; the framework's TurnDetector and local VAD send
+        activity_start / activity_end. Known problems in a console call (2026-11-23):
+        1. Replies lag one turn behind (activity_end, then client content with turn_complete=True).
+        2. The first words are cut (activity_start is sent ~0.4 s after the local VAD start).
+        3. False interruptions with no local VAD start, as the model starts a new generation.
     Diagnostics: VOICE_DEBUG=1 (off by default), see voice_debug.py."""
     provider = os.environ.get("VOICE_PROVIDER") or "livekit"
     if provider == "livekit":
         model = os.environ.get("VOICE_MODEL", "google/gemini-3.8-live")
         logger.info("Voice: %s via LiveKit Inference", model)
         return inference.RealtimeModel(model=model, voice="Puck")
-    if provider == "google":
-        api_key = os.environ.get("GOOGLE_VOICE_API_KEY")
-        if not api_key:  # never fall back to GOOGLE_API_KEY, the key of the conversation tests
-            raise RuntimeError("VOICE_PROVIDER=google needs GOOGLE_VOICE_API_KEY")
-        logger.info("Voice: %s via the Gemini API", GOOGLE_VOICE_MODEL)
-        # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
-        # api_version="v1beta": google-genai defaults to "v1", where the Live API answers HTTP 404
-        # (checked with scripts/check_gemini_live.py).
-        # automatic_activity_detection disabled: Gemini's own VAD missed a console caller's speech, so
-        # turns come from the framework's TurnDetector and local VAD (activity_start / activity_end).
-        return google.realtime.RealtimeModel(
-            model=GOOGLE_VOICE_MODEL,
-            voice="Puck",
-            api_key=api_key,
-            vertexai=False,
-            api_version="v1beta",
-            realtime_input_config=genai_types.RealtimeInputConfig(
-                automatic_activity_detection=genai_types.AutomaticActivityDetection(disabled=True)
-            ),
+    if provider != "google":
+        raise ValueError(f"Unknown VOICE_PROVIDER {provider!r}: use 'livekit' or 'google'")
+
+    api_key = os.environ.get("GOOGLE_VOICE_API_KEY")
+    if not api_key:  # never fall back to GOOGLE_API_KEY, the key of the conversation tests
+        raise RuntimeError("VOICE_PROVIDER=google needs GOOGLE_VOICE_API_KEY")
+    turn_detection = os.environ.get("VOICE_TURN_DETECTION") or "server"
+    if turn_detection == "server":
+        input_config = NOT_GIVEN  # Gemini's defaults: its automatic activity detection is on
+    elif turn_detection == "local":
+        input_config = genai_types.RealtimeInputConfig(
+            automatic_activity_detection=genai_types.AutomaticActivityDetection(disabled=True)
         )
-    raise ValueError(f"Unknown VOICE_PROVIDER {provider!r}: use 'livekit' or 'google'")
+    else:
+        raise ValueError(f"Unknown VOICE_TURN_DETECTION {turn_detection!r}: use 'server' or 'local'")
+    logger.info("Voice: %s via the Gemini API, %s turn detection", GOOGLE_VOICE_MODEL, turn_detection)
+    # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
+    # api_version="v1beta": google-genai defaults to "v1", where the Live API answers HTTP 404
+    # (checked with scripts/check_gemini_live.py).
+    return google.realtime.RealtimeModel(
+        model=GOOGLE_VOICE_MODEL,
+        voice="Puck",
+        api_key=api_key,
+        vertexai=False,
+        api_version="v1beta",
+        realtime_input_config=input_config,
+    )
 
 
 def room_options() -> room_io.RoomOptions:
