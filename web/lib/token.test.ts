@@ -23,7 +23,7 @@ test('token is scoped to one fresh demo room and one narrow job', async () => {
     canSubscribe: true,
     canPublish: true,
     canPublishSources: ['microphone'],
-    canPublishData: false,
+    canPublishData: true,
   });
 
   // Dispatch only the draftwell agent; room holds the caller and the agent only.

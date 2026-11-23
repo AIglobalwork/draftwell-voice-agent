@@ -6,7 +6,7 @@ const AGENT_NAME = 'draftwell';
 // Public demo design: anyone who opens the site may ask for a token, with no login.
 // That is acceptable only because a token can do one narrow thing: join its own fresh
 // random room, publish the microphone, and get the draftwell agent dispatched.
-// It cannot create other rooms, admin anything, or publish data.
+// It cannot create other rooms or admin anything; data goes only to its own room.
 // The agent ends every call after 300 s, which caps the voice spend.
 export async function createDemoToken(apiKey: string, apiSecret: string) {
   // Nothing from the request is used: the server picks every value.
@@ -25,8 +25,10 @@ export async function createDemoToken(apiKey: string, apiSecret: string) {
     canSubscribe: true,
     canPublish: true,
     canPublishSources: [TrackSource.MICROPHONE],
-    // The panel and the transcript are sent by the agent; the caller sends no data.
-    canPublishData: false,
+    // The browser sends the pre-connect audio buffer (the caller's first words while the
+    // agent joins) as a data stream, so data publishing must be allowed. Data only reaches
+    // the other participants of this room, that is the agent.
+    canPublishData: true,
   });
   // The room holds the caller and the agent only, and closes soon after it empties.
   at.roomConfig = new RoomConfiguration({
