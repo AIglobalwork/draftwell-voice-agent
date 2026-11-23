@@ -130,3 +130,8 @@ async def test_call_ends_even_if_the_goodbye_fails(fast_sleep):
     with pytest.raises(RuntimeError):
         await main.end_call_after(session, 300)
     assert session.events[-1] == ("shutdown",)
+
+
+def test_room_is_deleted_when_the_session_ends():
+    # Without this the agent stays in the room after the goodbye and keeps using agent minutes.
+    assert main.room_options().delete_room_on_close is True

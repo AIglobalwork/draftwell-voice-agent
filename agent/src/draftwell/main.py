@@ -87,6 +87,17 @@ def log_timer_failure(task: asyncio.Task) -> None:
         logger.error("Call timer failed: %s", type(task.exception()).__name__)
 
 
+def room_options() -> room_io.RoomOptions:
+    return room_io.RoomOptions(
+        audio_input=room_io.AudioInputOptions(
+            noise_cancellation=ai_coustics.audio_enhancement(model=ai_coustics.EnhancerModel.QUAIL_VF_S),
+        ),
+        # Ends the call for both sides when the session closes (goodbye, hang-up, error).
+        # Without it the agent stays in the room and keeps using agent minutes.
+        delete_room_on_close=True,
+    )
+
+
 @server.rtc_session(agent_name="draftwell")
 async def entrypoint(ctx: JobContext) -> None:
     config = load_business_config(CONFIG_DIR / "business.yaml")
@@ -111,11 +122,7 @@ async def entrypoint(ctx: JobContext) -> None:
     await session.start(
         agent=DraftwellAgent(deps),
         room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                noise_cancellation=ai_coustics.audio_enhancement(model=ai_coustics.EnhancerModel.QUAIL_VF_S),
-            ),
-        ),
+        room_options=room_options(),
     )
     await ctx.connect()
     timer = asyncio.create_task(end_call_after(session, config.max_call_seconds))
