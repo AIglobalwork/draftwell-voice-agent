@@ -222,3 +222,14 @@ def test_google_provider_uses_an_api_version_that_serves_live(voice_env):
     voice_env.setenv("VOICE_PROVIDER", "google")
     voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
     assert main.voice_model()._opts.api_version == "v1beta"
+
+
+def test_google_provider_leaves_turn_detection_to_livekit(voice_env):
+    # Gemini's own voice activity detection missed a console caller's speech (no ACTIVITY_START for the
+    # first phrase, no ACTIVITY_END for the second), so turns come from the framework's TurnDetector
+    # and local VAD, which send activity_start / activity_end to Gemini.
+    voice_env.setenv("VOICE_PROVIDER", "google")
+    voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
+    model = main.voice_model()
+    assert model._opts.realtime_input_config.automatic_activity_detection.disabled is True
+    assert model.capabilities.turn_detection is False  # the framework now owns turn detection

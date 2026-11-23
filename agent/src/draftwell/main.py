@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
+from google.genai import types as genai_types
 from livekit.agents import AgentServer, AgentSession, JobContext, JobProcess, cli, inference, room_io
 from livekit.plugins import ai_coustics, google
 
@@ -110,8 +111,17 @@ def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
         # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
         # api_version="v1beta": google-genai defaults to "v1", where the Live API answers HTTP 404
         # (checked with scripts/check_gemini_live.py).
+        # automatic_activity_detection disabled: Gemini's own VAD missed a console caller's speech, so
+        # turns come from the framework's TurnDetector and local VAD (activity_start / activity_end).
         return google.realtime.RealtimeModel(
-            model=GOOGLE_VOICE_MODEL, voice="Puck", api_key=api_key, vertexai=False, api_version="v1beta"
+            model=GOOGLE_VOICE_MODEL,
+            voice="Puck",
+            api_key=api_key,
+            vertexai=False,
+            api_version="v1beta",
+            realtime_input_config=genai_types.RealtimeInputConfig(
+                automatic_activity_detection=genai_types.AutomaticActivityDetection(disabled=True)
+            ),
         )
     raise ValueError(f"Unknown VOICE_PROVIDER {provider!r}: use 'livekit' or 'google'")
 
