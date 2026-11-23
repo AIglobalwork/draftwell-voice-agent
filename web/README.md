@@ -36,11 +36,11 @@ pnpm dev
 
 Then open http://localhost:3000 in your browser.
 
-The app is configured to connect to the LiveKit homepage agent by default, which you can also try at [livekit.com](https://www.livekit.com). That agent takes voice and text input only, so video and screen sharing are hidden until you point the app at your own agent (see [Connect to your agent](#connect-to-your-agent)).
+The app connects to the Draftwell agent from [`agent/`](../agent): the token route dispatches the agent named `draftwell` (see [Connect to your agent](#connect-to-your-agent)). That agent takes voice and text input only, so the page has no video or screen sharing.
 
 ## Connect to your agent
 
-To switch from the default agent to your own, you first need a LiveKit agent to speak with. For a no-code setup, use the [Agent Builder](https://docs.livekit.io/agents/start/builder/). For more customization, try our starter agent for [Python](https://github.com/livekit-examples/agent-starter-python), [Node.js](https://github.com/livekit-examples/agent-starter-node), or [create your own from scratch](https://docs.livekit.io/agents/start/voice-ai/).
+To run the page against a different agent, you first need a LiveKit agent to speak with. For a no-code setup, use the [Agent Builder](https://docs.livekit.io/agents/start/builder/). For more customization, try our starter agent for [Python](https://github.com/livekit-examples/agent-starter-python), [Node.js](https://github.com/livekit-examples/agent-starter-node), or [create your own from scratch](https://docs.livekit.io/agents/start/voice-ai/).
 
 Second, the app needs a token endpoint. This app includes one at [`app/api/token/route.ts`](./app/api/token/route.ts). Copy `.env.example` to `.env.local` and fill in your project's LiveKit credentials (from your project's Settings page):
 

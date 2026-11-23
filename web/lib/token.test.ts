@@ -16,7 +16,7 @@ test('token is scoped to one fresh demo room and one narrow job', async () => {
   const claims = await new TokenVerifier(KEY, SECRET).verify(a.participantToken);
   expect(claims.sub).toBe(a.participantIdentity);
 
-  // Only join this room and publish the microphone. No admin grants, no data publishing.
+  // Only join this room and publish the microphone and data (the pre-connect audio buffer is a data stream). No admin grants.
   expect(claims.video).toEqual({
     room: a.roomName,
     roomJoin: true,

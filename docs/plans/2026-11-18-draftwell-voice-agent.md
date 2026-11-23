@@ -405,9 +405,9 @@ Moved here from the deploy task so the agent runs in the cloud as soon as it wor
 - Consumes: agent name `draftwell`, panel topic `draftwell.panel`, event shape from Task 6
 - Produces: `parsePanelEvent(raw: string) -> PanelEvent | null`
 
-- [ ] **Step 1:** Clone the template into `web/`; set the dispatched agent name to `draftwell` in the connection-details route; `.env.local` with LiveKit keys (not committed).
-- [ ] **Step 2:** Rebuild the page from artboard B: header, hero ("Call at 9 pm. Booked by 9:03." + sample dialog), prices with the $718 example, visit steps, area/hours/person, footer. Colors `#0D4A42`, `#F5C518`, `#1C2124`, `#EBEDEC`; fonts Barlow Condensed + Barlow; Atlanta copy and (404) 555-0142. Both "Talk to our AI assistant" buttons start the session. Next to the button: a short note that the live demo has a small monthly voice budget, with a link to the video.
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 1:** Clone the template into `web/`; set the dispatched agent name to `draftwell` in the connection-details route; `.env.local` with LiveKit keys (not committed).
+- [x] **Step 2:** Rebuild the page from artboard B: header, hero ("Call at 9 pm. Booked by 9:03." + sample dialog), prices with the $718 example, visit steps, area/hours/person, footer. Colors `#0D4A42`, `#F5C518`, `#1C2124`, `#EBEDEC`; fonts Barlow Condensed + Barlow; Atlanta copy and (404) 555-0142. Both "Talk to our AI assistant" buttons start the session. Next to the button: a short note that the live demo has a small monthly voice budget, with a link to the video.
+- [x] **Step 3: Write the failing test**
 
 ```ts
 test("parses valid panel events and rejects junk", () => {
@@ -418,18 +418,18 @@ test("parses valid panel events and rejects junk", () => {
 });
 ```
 
-- [ ] **Step 4:** Run the web test → FAIL. **Step 5:** Implement `parsePanelEvent` and `DemoPanel` (registers a text stream handler for `draftwell.panel`; shows "Customer's phone" and "Owner's phone" cards; SMS card labelled "Demo: not sent, see README"). **Step 6:** Test → PASS.
-- [ ] **Step 7:** Manual: page at 390 px and 1280 px width; keyboard focus visible; a call from the page books a slot and both panel cards appear.
-- [ ] **Step 8:** Commit: `feat: Draftwell website with AI call button and demo panel`.
+- [x] **Step 4:** Run the web test → FAIL. **Step 5:** Implement `parsePanelEvent` and `DemoPanel` (registers a text stream handler for `draftwell.panel`; shows "Customer's phone" and "Owner's phone" cards; SMS card labelled "Demo: not sent, see README"). **Step 6:** Test → PASS.
+- [x] **Step 7:** Manual: page at 390 px and 1280 px width; keyboard focus visible; a call from the page books a slot and both panel cards appear.
+- [x] **Step 8:** Commit: `feat: Draftwell website with AI call button and demo panel`.
 
 ### Task 10: Website deploy and CI
 
 **Files:** Create `.github/workflows/ci.yml`
 
-- [ ] **Step 1:** CI on push: `uv run pytest -m "not llm"` in `agent/`; `npm ci && npm test && npm run build` in `web/`. Push → green.
-- [ ] **Step 2:** Import `web/` into Netlify (base directory `web`, build settings in `web/netlify.toml` with the `@netlify/plugin-nextjs` adapter); set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (a separate LiveKit key for the site) and `NODE_VERSION=22`. Expected: public URL; with your PC off, a call to the agent deployed in Task 8 books a slot.
+- [x] **Step 1:** CI on push: `uv run pytest -m "not llm"` in `agent/`; `npm ci && npm test && npm run build` in `web/`. Push → green.
+- [x] **Step 2:** Import `web/` into Netlify (base directory `web`, build settings in `web/netlify.toml` with the `@netlify/plugin-nextjs` adapter); set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (a separate LiveKit key for the site) and `NODE_VERSION=22`. Expected: public URL; with your PC off, a call to the agent deployed in Task 8 books a slot.
   - Changed 2026-11-23: the plan said Vercel, but Vercel blocked the phone verification of the account for 12 hours, so the site went to Netlify (free tier, also runs the token route as a server function).
-- [ ] **Step 3:** Commit: `ci: tests and build; Netlify deploy`.
+- [x] **Step 3:** Commit: `ci: tests and build; Netlify deploy`.
 
 ### Task 11: README, video, process write-up
 
