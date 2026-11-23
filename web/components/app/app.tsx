@@ -8,7 +8,7 @@ import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { CallScreen } from '@/components/app/call-screen';
 import { SitePage } from '@/components/app/site-page';
 import { useDebugMode } from '@/hooks/useDebug';
-import { startOrEnd } from '@/lib/call';
+import { AGENT_CONNECT_TIMEOUT_MS, startOrEnd } from '@/lib/call';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -19,7 +19,9 @@ function AppSetup() {
 
 export function App() {
   const tokenSource = useMemo(() => TokenSource.endpoint('/api/token'), []);
-  const session = useSession(tokenSource);
+  const session = useSession(tokenSource, {
+    agentConnectTimeoutMilliseconds: AGENT_CONNECT_TIMEOUT_MS,
+  });
   const [callOpen, setCallOpen] = useState(false);
   const [paused, setPaused] = useState(false);
 

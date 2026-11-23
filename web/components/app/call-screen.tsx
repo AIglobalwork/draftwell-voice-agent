@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import { DemoPanel } from '@/components/DemoPanel';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
 import { AgentDisconnectButton } from '@/components/agents-ui/agent-disconnect-button';
 import { AgentTrackToggle } from '@/components/agents-ui/agent-track-toggle';
 import { useInputControls } from '@/hooks/agents-ui/use-agent-control-bar';
+import { NEW_CALL, callStatus, shouldPause, trackAgent } from '@/lib/call';
 import { REPO_URL } from '@/lib/demo';
 
 function formatTime(seconds: number) {
@@ -39,15 +40,19 @@ export function CallScreen({ paused, onClose, onPaused }: CallScreenProps) {
   const { microphoneToggle } = useInputControls({ saveUserChoices: false });
   const seconds = useCallTimer(session.isConnected && !paused);
 
-  // The agent did not join (for example the monthly voice credits are used up).
+  // Pause when the agent did not join within a minute, or joined and left without a word
+  // (for example the voice credits are used up or the voice model answered 429).
+  const progress = useRef(NEW_CALL);
   useEffect(() => {
-    if (agent.state === 'failed') {
+    if (paused) return;
+    progress.current = trackAgent(progress.current, agent.state);
+    if (shouldPause(progress.current, agent.state)) {
       session.end();
       onPaused();
     }
-  }, [agent.state, session, onPaused]);
+  }, [agent.state, paused, session, onPaused]);
 
-  const status = agent.isConnected ? 'Call in progress' : 'Connecting…';
+  const status = callStatus(agent.isConnected);
 
   return (
     <div
