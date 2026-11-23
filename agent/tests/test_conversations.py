@@ -211,3 +211,24 @@ async def test_after_booking_says_confirmation_is_on_its_way(llm):
             "Does not say that the confirmation or email has already been sent.",
         )
 
+
+async def test_early_email_is_spelled_back_right_away(llm):
+    async with await start(llm) as session:
+        r = await session.run(
+            user_input="Hi, I'm John Smith. My email is jsmith at example dot com. I'd like to book a duct cleaning."
+        )
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm, intent="Spells the email address back letter by letter and asks the caller to confirm it."
+        )
+
+
+async def test_email_given_early_is_not_asked_again(llm):
+    async with await start(llm) as session:
+        await session.run(
+            user_input=DETAILS + " My email is jsmith at example dot com. What times do you have on Thursday December 3rd?"
+        )
+        r = await session.run(user_input="Yes, that email is right. The Thursday 8 AM slot works for me.")
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm,
+            intent="Does not ask whether the caller wants the confirmation by email and does not ask for an email address again.",
+        )
