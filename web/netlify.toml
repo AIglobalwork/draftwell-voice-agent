@@ -1,0 +1,16 @@
+# Netlify build settings for the Draftwell website.
+# This file lives in the base directory (web/), so the paths below are relative to web/.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Same Node version as CI.
+  NODE_VERSION = "22"
+
+# The Next.js adapter turns the .next output into a site plus a server function
+# for /api/token. Without it Netlify uploads .next as plain files and serves a 404.
+# It is pinned as a devDependency in package.json, as the Netlify docs require
+# for a plugin declared here.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

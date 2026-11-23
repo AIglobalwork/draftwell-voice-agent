@@ -6,7 +6,7 @@
 
 **Architecture:** All business logic (pricing, service area, scheduling, booking, notifications) lives in plain, unit-tested Python modules. A thin LiveKit Agents layer exposes that logic to a Gemini Live realtime model (served through LiveKit Inference, model name from `VOICE_MODEL`) as function tools; the model only collects data and calls tools, it never does arithmetic or invents slots. A Next.js site (from LiveKit's `agent-starter-react` template, restyled to design B) connects the browser to the agent and shows a live panel with the "SMS" and owner notification the agent emits.
 
-**Tech Stack:** Python 3.12, uv, `livekit-agents[google]~=1.8`, `livekit-plugins-ai-coustics~=0.3` (noise cancellation, as in the spike); voice via LiveKit Inference (`inference.RealtimeModel(model=VOICE_MODEL, voice="Puck")`, default `google/gemini-3.8-live`); Gemini text model via `google.LLM(model=TEST_LLM_MODEL)` (default `gemini-3.5-flash-lite`) with the AI Studio key, for conversation tests only; google-api-python-client (Calendar), httpx (Slack), smtplib (email), Twilio SDK (SMS, disabled by flag), pytest + pytest-asyncio; Next.js + `@livekit/components-react` (template), Vercel; LiveKit Cloud (Build plan); GitHub Actions.
+**Tech Stack:** Python 3.12, uv, `livekit-agents[google]~=1.8`, `livekit-plugins-ai-coustics~=0.3` (noise cancellation, as in the spike); voice via LiveKit Inference (`inference.RealtimeModel(model=VOICE_MODEL, voice="Puck")`, default `google/gemini-3.8-live`); Gemini text model via `google.LLM(model=TEST_LLM_MODEL)` (default `gemini-3.5-flash-lite`) with the AI Studio key, for conversation tests only; google-api-python-client (Calendar), httpx (Slack), smtplib (email), Twilio SDK (SMS, disabled by flag), pytest + pytest-asyncio; Next.js + `@livekit/components-react` (template), Netlify; LiveKit Cloud (Build plan); GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-11-18-duct-voice-agent-design.md` (Ukrainian; Task 1 adds the English copy at `docs/specs/2026-11-18-voice-booking-agent-design.md`). Approved site design: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh, artboard "B. Service van".
 
@@ -427,8 +427,9 @@ test("parses valid panel events and rejects junk", () => {
 **Files:** Create `.github/workflows/ci.yml`
 
 - [ ] **Step 1:** CI on push: `uv run pytest -m "not llm"` in `agent/`; `npm ci && npm test && npm run build` in `web/`. Push → green.
-- [ ] **Step 2:** Import `web/` into Vercel; set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`. Expected: public URL; with your PC off, a call to the agent deployed in Task 8 books a slot.
-- [ ] **Step 3:** Commit: `ci: tests and build; Vercel deploy`.
+- [ ] **Step 2:** Import `web/` into Netlify (base directory `web`, build settings in `web/netlify.toml` with the `@netlify/plugin-nextjs` adapter); set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (a separate LiveKit key for the site) and `NODE_VERSION=22`. Expected: public URL; with your PC off, a call to the agent deployed in Task 8 books a slot.
+  - Changed 2026-11-23: the plan said Vercel, but Vercel blocked the phone verification of the account for 12 hours, so the site went to Netlify (free tier, also runs the token route as a server function).
+- [ ] **Step 3:** Commit: `ci: tests and build; Netlify deploy`.
 
 ### Task 11: README, video, process write-up
 

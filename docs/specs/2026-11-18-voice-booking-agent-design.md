@@ -165,10 +165,10 @@ Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh
 |---|---|---|
 | Code, documentation, tests, CI | GitHub (repository + GitHub Actions) | That is GitHub itself |
 | Voice agent (Python, runs continuously) | LiveKit Cloud (free Build) | GitHub does not run servers that wait for calls |
-| Company website + access token function | Vercel or similar (free tier) | GitHub Pages serves only static files, and the token must be signed with a secret key that cannot go into page code |
+| Company website + access token function | Netlify (free tier; planned as Vercel, which blocked the account's phone verification) | GitHub Pages serves only static files, and the token must be signed with a secret key that cannot go into page code |
 | Voice model, text model for tests, calendar, email, Slack | LiveKit Inference, Gemini API (AI Studio key), Google Calendar, an email service, Slack | External services |
 
-Deploys to LiveKit Cloud and Vercel come from the same repository.
+Deploys to LiveKit Cloud and Netlify come from the same repository.
 
 ## 12. What is left to the developer
 
