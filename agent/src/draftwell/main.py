@@ -97,7 +97,17 @@ def log_timer_failure(task: asyncio.Task) -> None:
 def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
     """VOICE_PROVIDER picks who runs the voice model:
     "livekit" (default): LiveKit Inference, paid from the LiveKit Cloud credits;
-    "google": the Gemini API directly, with its own key (GOOGLE_VOICE_API_KEY)."""
+    "google": the Gemini API directly, with its own key (GOOGLE_VOICE_API_KEY).
+
+    "google" is experimental (livekit-plugins-google 1.8.13, gemini-3.8-live, turns from LiveKit's
+    turn detection). Known problems from a live console call (2026-11-23):
+    1. Replies lag one turn behind: after activity_end the plugin sends client content with
+       turn_complete=True (generate_reply), and Gemini seems to answer before it has processed
+       the audio of that turn.
+    2. The first words are cut: local VAD starts ~0.4 s before activity_start is sent.
+    3. False interruptions: activity_start and interrupted=True with no local VAD start
+       (mic peak 8-12), just as the model starts a new generation.
+    Diagnostics: VOICE_DEBUG=1 (off by default), see voice_debug.py."""
     provider = os.environ.get("VOICE_PROVIDER") or "livekit"
     if provider == "livekit":
         model = os.environ.get("VOICE_MODEL", "google/gemini-3.8-live")
@@ -155,7 +165,13 @@ async def entrypoint(ctx: JobContext) -> None:
         now=lambda: datetime.now(UTC),
     )
 
+    if os.environ.get("VOICE_DEBUG") == "1":  # temporary diagnostics, see voice_debug.py
+        from draftwell import voice_debug
+
+        voice_debug.enable()
     session = AgentSession(llm=voice_model())
+    if os.environ.get("VOICE_DEBUG") == "1":
+        voice_debug.watch_session(session)
     await session.start(
         agent=DraftwellAgent(deps),
         room=ctx.room,
