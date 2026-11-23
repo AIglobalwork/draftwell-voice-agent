@@ -14,7 +14,7 @@ A portfolio project on GitHub that shows the author can work as an AI integrator
 
 **Business problem:** American air duct cleaning companies often do not pick up the phone (crew on a job, evening, weekend) and lose customers. The customer calls the next company on the list.
 
-**Timeline:** 7 days. **Budget:** $0 for development, with a $5-10 reserve for an emergency. Voice runs on LiveKit Inference credits of the Build plan: $2.50 per month, about 50 minutes, a hard cap with no overage charges. So voice is used only for manual checks and the demo video.
+**Timeline:** 7 days. **Budget:** $0 for development, with a $5-10 reserve for an emergency. Voice runs on LiveKit Inference credits of the Build plan: $2.50 per month, about 50 minutes, a hard cap with no overage charges. So voice is used only for manual checks (23.11: no demo video).
 
 ## 2. What the system does
 
@@ -42,7 +42,7 @@ To the owner: a message by email and Slack
 - A price always sounds like an estimate: "About $520, the technician confirms the exact amount on site."
 - Service area check by ZIP code.
 - If the customer asks for a live person: the agent takes a message and passes it to the owner.
-- A recruiter can try the agent themselves (button in the browser) and watch a 1-2 minute video.
+- A recruiter can try the agent themselves (button in the browser). When the live demo is offline, the README proves the work on its own: screenshots of a real call and its transcript (23.11: replaces the planned 1-2 minute video).
 - A one-page website for the fictional company, built from scratch (services, "from" prices, service area, how a cleaning goes, FAQ, contacts) with a "Talk to our AI assistant" button. The site replaces a separate demo page. The main way to book on the site is by voice through the agent (author's decision). The design is agreed with the author on mockups before any code is written.
 
 **If time remains (author's decision)**
@@ -63,7 +63,7 @@ To the owner: a message by email and Slack
 - A "chatbot that forwards text to a model": no real tools and no data.
 - The agent states a price, slot or service that is not in the data.
 - Double booking of one time.
-- A demo that does not work when the recruiter presses the button, with no video as a fallback.
+- A demo that does not work when the recruiter presses the button, with nothing in the README that shows a real call (23.11: screenshots and a call transcript instead of a video).
 - API keys or secrets in the repository.
 - Made-up customer reviews on the site.
 - Code the author cannot explain in an interview.
@@ -74,7 +74,7 @@ To the owner: a message by email and Slack
 - **Free tiers:** LiveKit Cloud Build (1000 agent minutes per month, no card, one free US number, cold start); Gemini Live through LiveKit Inference ($2.50 credits per month, about 50 minutes). The voice model name is a single value `VOICE_MODEL` in `.env` so it can be replaced.
 - **Result of the first-day spike (19.11):** Gemini Live is not available for the AI Studio key: the direct Google plugin returns HTTP 404. Through LiveKit Inference (`google/gemini-3.8-live`, voice Puck, ai-coustics noise cancellation) the agent answers by voice. Decision: voice goes through LiveKit Inference exactly as in the spike; the AI Studio key (free tier) is used only for text conversation tests.
 - **Text model for tests (checked 19.11):** `gemini-2.5-flash` is closed to new users; `gemini-3.5-flash-lite` answered; `gemini-3.8-flash` exists but answered 503 "high demand". The model name is in `TEST_LLM_MODEL` (default `gemini-3.5-flash-lite`; `gemini-3.8-flash` as an option once it stops returning 503).
-- **Public demo limits sized to 50 minutes per month:** a call lasts up to 5 minutes (300 s); there is no daily call limit. The README and the site say the live demo has a small monthly voice budget and the main demo is the video. When the credits are exhausted (the agent does not answer), the site says the live demo is paused and shows the video.
+- **Public demo limits sized to 50 minutes per month:** a call lasts up to 5 minutes (300 s); there is no daily call limit. The README and the site say the live demo has a small monthly voice budget. When the credits are exhausted (the agent does not answer), the site says the live demo is paused and links to the GitHub repository (23.11: there is no video).
 - **The company is fictional.** The name and brand must not match a real company. The demo page carries the text: "Fictional company, demo only".
 - The author is only starting to learn agentic programming, so the code must be simple to read and explain. No unnecessary abstractions.
 
@@ -95,7 +95,7 @@ To the owner: a message by email and Slack
 - Slots are stored in Google Calendar.
 - SMS: the code exists but is switched off; the demo shows an SMS log.
 - Owner messages go through two channels: email and Slack.
-- The recruiter tries the agent through a button in the browser and a video; a real US number is a bonus.
+- The recruiter tries the agent through a button in the browser (23.11: the planned video is dropped, see below); a real US number is a bonus.
 - The agent has access to the price list and calculates the total price for the customer's needs.
 - The price is presented as an estimate.
 - The fictional company's price list uses real market numbers, in a separate file.
@@ -104,12 +104,13 @@ To the owner: a message by email and Slack
 - A 4-hour slot with a buffer for travel.
 - We write the company website ourselves and agree the design on mockups. The "Handyman's Van" direction (B) was chosen: dark green #0D4A42, yellow #F5C518, fonts Barlow Condensed + Barlow, on the first screen a mockup of a conversation with the agent that ends in a booking. A line-by-line price calculation example (from direction C) was added to this direction.
 - City: Atlanta, Georgia.
-- (19.11) Voice through LiveKit Inference, as in the working spike; the model is a single value `VOICE_MODEL`. The budget is about 50 minutes per month, so voice is used only for manual checks and the demo video.
+- (19.11) Voice through LiveKit Inference, as in the working spike; the model is a single value `VOICE_MODEL`. The budget is about 50 minutes per month, so voice is used only for manual checks (23.11: no demo video).
 - (19.11) Conversation tests run on a Gemini text model through the AI Studio key (`GOOGLE_API_KEY`, free tier), not through LiveKit Inference, so they do not spend voice credits.
 - (19.11) Double booking protection without an in-process lock (sessions may run in separate processes): see section 7.
 - (19.11) No daily session limit; a call lasts up to 300 s.
 - (19.11) The agent is deployed to LiveKit Cloud as soon as it works locally. Deploy with project keys, because `lk cloud auth` does not work on Windows.
-- (19.11) The README says directly that the live demo has a small monthly voice budget and the main demo is the video.
+- (19.11) The README says directly that the live demo has a small monthly voice budget. (23.11: the video part is dropped, see the next point.)
+- (23.11) No video. The README is a long-lived portfolio case study, not a 2-minute pitch: it must prove the work on its own, even when the live demo is offline. So the Demo section has screenshots (the site, a call with both panel cards, the calendar event, the Slack message) and a short real call transcript. The site links to the GitHub repository ("see how it works") instead of a video. The README also has a "Results" section (measured facts only) and "What I would do for a real client" (next steps, not built).
 
 Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh
 
@@ -156,7 +157,7 @@ Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh
 - A public GitHub repository with the agent code, the demo page, tests, configuration and documentation.
 - The company website on free hosting with a "Talk to our AI assistant" button and a side panel for SMS/messages.
 - The agent deployed to LiveKit Cloud so a recruiter can call without the author's PC running.
-- A 1-2 minute video in the README. This is the main demo, because the live demo has a small monthly voice budget; the README says so directly.
+- In the README: screenshots of a real call (the site, the call with both panel cards, the calendar event, the Slack message) and a short call transcript, so the work is shown even when the live demo is offline (23.11: replaces the planned 1-2 minute video).
 - Bonus, if time remains: a real US number from LiveKit.
 
 ## 11. Where things live

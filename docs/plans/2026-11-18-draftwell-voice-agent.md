@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Budget: $0. Voice runs on LiveKit Inference credits of the Build plan: $2.50/month (~50 voice minutes), hard cap, no overage charges. Voice is used only for manual checks and the demo video. Reserve $5–10 stays for an emergency (e.g. Google billing to unlock Live models).
+- Budget: $0. Voice runs on LiveKit Inference credits of the Build plan: $2.50/month (~50 voice minutes), hard cap, no overage charges. Voice is used only for manual checks (changed 2026-11-23: no demo video). Reserve $5–10 stays for an emergency (e.g. Google billing to unlock Live models).
 - Voice model (spike result 2026-11-19): Gemini Live is not available for the author's AI Studio key (Google plugin → HTTP 404), so the Google plugin is NOT used for voice. Voice goes through LiveKit Inference exactly as in the working spike: `inference.RealtimeModel(model=..., voice="Puck")`, ai-coustics noise cancellation (`ai_coustics.audio_enhancement(model=ai_coustics.EnhancerModel.QUAIL_VF_S)`). The model name lives in one env value, `VOICE_MODEL` (default `google/gemini-3.8-live`), so it can be swapped later.
 - Conversation tests (marker `llm`) use a Gemini text model through the AI Studio key (`GOOGLE_API_KEY`, free tier), never LiveKit Inference, so they spend no voice credits. Model name in `TEST_LLM_MODEL` (default `gemini-3.5-flash-lite`). Checked 2026-11-19: `gemini-2.5-flash` is closed to new users (HTTP 404); `gemini-3.5-flash-lite` answered; `gemini-3.8-flash` exists but answered HTTP 503 "high demand", so it is an option once it stops returning 503.
 - Double booking: no in-process lock (sessions may run in separate processes). `book_slot` checks the slot is free, creates the event, then re-reads the slot's events. If the slot holds more than one event and ours is not the earliest (by creation time, then event id), it deletes ours and raises `SlotTakenError`.
@@ -26,7 +26,7 @@
 - Arithmetic only in code. `book_appointment` recomputes the quote from its own arguments; it never accepts a total from the model.
 - SMS code exists but is off: `SMS_ENABLED=false`. Customer email is optional.
 - Owner notifications: email and Slack. A failed notification never cancels a booking.
-- Public demo limits (sized to ~50 min/month of voice): dedicated demo calendar, call max 300 s. No daily session limit. The README and the site say the live demo has a small monthly voice budget and the video is the main demo. When the monthly credits are exhausted (the agent does not answer), the site says the live demo is paused and points to the video.
+- Public demo limits (sized to ~50 min/month of voice): dedicated demo calendar, call max 300 s. No daily session limit. The README and the site say the live demo has a small monthly voice budget. When the monthly credits are exhausted (the agent does not answer), the site says the live demo is paused and points to the GitHub repository. (Changed 2026-11-23: no video; the README's screenshots and a real call transcript are the proof.)
 - The agent introduces itself as a virtual assistant.
 - Out of scope: rescheduling, cancelling, mold/repair advice ("the technician will assess on site"), other languages, fake reviews.
 - Secrets never committed: `.env*` (except `.env.example`) in `.gitignore`; service account JSON passed as env var `GOOGLE_SERVICE_ACCOUNT_JSON`, never a file in the repo.
@@ -406,7 +406,7 @@ Moved here from the deploy task so the agent runs in the cloud as soon as it wor
 - Produces: `parsePanelEvent(raw: string) -> PanelEvent | null`
 
 - [x] **Step 1:** Clone the template into `web/`; set the dispatched agent name to `draftwell` in the connection-details route; `.env.local` with LiveKit keys (not committed).
-- [x] **Step 2:** Rebuild the page from artboard B: header, hero ("Call at 9 pm. Booked by 9:03." + sample dialog), prices with the $718 example, visit steps, area/hours/person, footer. Colors `#0D4A42`, `#F5C518`, `#1C2124`, `#EBEDEC`; fonts Barlow Condensed + Barlow; Atlanta copy and (404) 555-0142. Both "Talk to our AI assistant" buttons start the session. Next to the button: a short note that the live demo has a small monthly voice budget, with a link to the video.
+- [x] **Step 2:** Rebuild the page from artboard B: header, hero ("Call at 9 pm. Booked by 9:03." + sample dialog), prices with the $718 example, visit steps, area/hours/person, footer. Colors `#0D4A42`, `#F5C518`, `#1C2124`, `#EBEDEC`; fonts Barlow Condensed + Barlow; Atlanta copy and (404) 555-0142. Both "Talk to our AI assistant" buttons start the session. Next to the button: a short note that the live demo has a small monthly voice budget, with a link to the video (changed 2026-11-23: the link goes to the GitHub repository, because there is no video).
 - [x] **Step 3: Write the failing test**
 
 ```ts
@@ -431,11 +431,13 @@ test("parses valid panel events and rejects junk", () => {
   - Changed 2026-11-23: the plan said Vercel, but Vercel blocked the phone verification of the account for 12 hours, so the site went to Netlify (free tier, also runs the token route as a server function).
 - [x] **Step 3:** Commit: `ci: tests and build; Netlify deploy`.
 
-### Task 11: README, video, process write-up
+### Task 11: README, process write-up
 
 **Files:** Modify `README.md`
 
 - [ ] **Step 1:** README sections: problem (missed calls), 1–2 min video (the main demo), live demo link with a note right next to it: the live demo runs on a small monthly voice budget (~50 minutes), so it may be paused, and the video is the main demo; architecture diagram (from the spec's "where things live"), how to run locally, tests, "Why SMS is simulated" (A2P 10DLC), "How this was built with Claude Code" (spec → plan → tasks, where the agent was wrong and how it was corrected, what you decided yourself), limits of the demo.
-- [ ] **Step 2:** Record the video: booking call on the site, panel cards, event in Google Calendar, Slack message.
+  - Changed 2026-11-23: no video. The Demo section shows screenshots (`docs/images/site.png`; `call.png` with both panel cards; `calendar.png` with the booked event; `slack.png` with the owner notification) and a short real call transcript (`docs/call-transcript.md`). The live site link stays, with a note that it runs on free tiers and a preview voice model, so it may be paused or offline. New sections: "Results" (measured facts only) and "What I would do for a real client" (next steps, not built).
+- **Step 2 (dropped 2026-11-23):** ~~Record the video: booking call on the site, panel cards, event in Google Calendar, Slack message.~~
+  - Reason: the README is a long-lived portfolio case study, not a 2-minute pitch: it must prove the work on its own, even when the live demo is offline. Screenshots of the same things (the site, the call with the panel cards, the calendar event, the Slack message) and a real call transcript do that without a video. The site's "watch the video" links now point to the GitHub repository ("see how it works").
 - [ ] **Step 3:** Fresh-eyes check: clone the repo into a new folder, follow README "run locally" exactly; fix anything that fails.
 - [ ] **Step 4:** Commit: `docs: README with demo, architecture and build process`.
