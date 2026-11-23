@@ -129,9 +129,11 @@ async def test_discount_request(llm):
 async def test_slot_taken(llm):
     # rival="before": another booking lands in the same slot first, so book_slot raises SlotTakenError
     async with await start(llm, FakeCalendar(rival="before")) as session:
-        await session.run(user_input=DETAILS + " What times do you have on Thursday December 3rd?")
+        # Booking needs a quote first: the booked price is the last one the caller heard.
+        await session.run(user_input=DETAILS + " How much is it, and what times do you have on Thursday December 3rd?")
         r = await session.run(
-            user_input="The Thursday 8 AM slot works. No email. Those details are all correct, please book it now."
+            user_input="The Thursday 8 AM slot works and the price is fine. No email. "
+            "Those details are all correct, please book it now."
         )
         r.expect.contains_function_call(name="book_appointment")
         await r.expect.next_event(type="message").judge(
@@ -199,10 +201,11 @@ async def test_after_booking_says_confirmation_is_on_its_way(llm):
     async with await start(llm) as session:
         await session.run(
             user_input=DETAILS + " Please email the confirmation to john at example dot com, that's j o h n. "
-            "What times do you have on Thursday December 3rd?"
+            "How much is it, and what times do you have on Thursday December 3rd?"
         )
         r = await session.run(
-            user_input="The Thursday 8 AM slot works. The email is right. All the details are correct, please book it now."
+            user_input="The Thursday 8 AM slot works and the price is fine. The email is right. "
+            "All the details are correct, please book it now."
         )
         r.expect.contains_function_call(name="book_appointment")
         await r.expect[-1].is_message(role="assistant").judge(

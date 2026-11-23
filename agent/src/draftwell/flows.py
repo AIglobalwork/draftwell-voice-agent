@@ -30,6 +30,9 @@ class Deps:
     publish: Callable[[dict], Awaitable[None]]  # sends an event to the browser panel
     now: Callable[[], datetime]
     background: set[asyncio.Task] = field(default_factory=set)  # running notification tasks
+    # The last price the caller heard in this call. Booking uses it, so the booked total is always the
+    # quoted one. Deps is built per call (main.entrypoint), so it never carries over to another caller.
+    last_quote: Quote | None = None
 
 
 def _quote_text(quote: Quote) -> str:
@@ -78,7 +81,9 @@ def quote(deps: Deps, params: QuoteParams) -> str:
     try:
         result = calculate_quote(params, deps.prices)
     except ValueError as exc:
+        deps.last_quote = None  # the details changed: an older price must not be booked
         return f"Cannot calculate a quote: {exc}. Ask the caller for the missing or corrected detail."
+    deps.last_quote = result
     return _quote_text(result) + "\nRead the total to the caller."
 
 
@@ -107,13 +112,15 @@ async def find_slots(deps: Deps, preferred_date: str | None) -> str:
     return f"Offer these to the caller.\n{_alternatives_text(first_available(free, preferred))}"
 
 
-async def book(deps: Deps, slot_start: str, customer: Customer, params: QuoteParams) -> str:
+async def book(deps: Deps, slot_start: str, customer: Customer) -> str:
     if not is_in_service_area(customer.zip_code, deps.config):
         return "That ZIP code is outside our service area, so nothing was booked. Offer to take a message."
-    try:
-        result = calculate_quote(params, deps.prices)  # recomputed here: the model never passes a total
-    except ValueError as exc:
-        return f"Nothing was booked: cannot calculate the quote ({exc}). Ask the caller for the missing detail."
+    result = deps.last_quote  # the price the caller heard; the model never passes prices or a total
+    if result is None:
+        return (
+            "Nothing was booked: there is no price estimate yet. Call the quote tool, read the total "
+            "to the caller, and book after they agree."
+        )
 
     try:
         start = datetime.fromisoformat(slot_start)

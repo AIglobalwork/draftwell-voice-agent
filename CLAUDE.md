@@ -23,7 +23,7 @@ Draftwell is a fictional Atlanta duct-cleaning company. This is a portfolio proj
 - Vents unknown: <=1500 sq ft -> 10, <=2500 -> 14, larger -> 18; the quote is then called approximate.
 - Every price the agent says is an estimate: "the technician confirms the final price on site".
 - Schedule: one crew, Mon-Sat, slots 08:00-12:00 and 13:00-17:00 local, bookable from tomorrow (local date) to 14 days ahead.
-- Arithmetic only in code. `book_appointment` recomputes the quote from its own arguments; it never accepts a total from the model.
+- Arithmetic only in code. `book_appointment` books the last `get_quote` result of the call (the price the caller heard) and takes no prices or total from the model; without a quote it books nothing. (Changed 2026-11-23: it used to recompute from its own arguments, and a live call booked $589 after a $718 quote.)
 - SMS code exists but is off: `SMS_ENABLED=false`. Customer email is optional.
 - Owner notifications: email and Slack. A failed notification never cancels a booking.
 - Public demo limits (sized to ~50 min/month of voice): dedicated demo calendar, call max 300 s. No daily session limit. The README and the site say the live demo has a small monthly voice budget. When the monthly credits are exhausted (the agent does not answer), the site says the live demo is paused and points to the GitHub repository. (Changed 2026-11-23: no video; the README's screenshots and a real call transcript are the proof.)

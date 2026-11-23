@@ -21,6 +21,12 @@ CUSTOMER = Customer("John Smith", "+14045550123", "123 Peachtree St NE, Atlanta,
 SLOT = "2026-12-03T08:00:00-05:00"
 
 
+async def quoted_book(deps, slot, customer, params):
+    """The order of a real call: the caller hears a quote, then books."""
+    quote(deps, params)
+    return await book(deps, slot, customer)
+
+
 def make_deps(calendar) -> Deps:
     return Deps(PRICES, CFG, calendar, RecordingNotifier(), RecordingPublish(), lambda: NOW)
 
@@ -54,13 +60,13 @@ def test_check_area(deps):
     assert "outside" in check_area(deps, "90210")
 
 
-async def test_book_recomputes_quote(deps):
-    t = await book(deps, SLOT, CUSTOMER, QuoteParams(1, 16, None, dryer_vent=True))
-    assert "$788" in t  # 449 + 6×35 + 129, not an earlier $718
+async def test_book_uses_the_quote_total(deps):
+    t = await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 16, None, dryer_vent=True))
+    assert "$788" in t  # 449 + 6×35 + 129
 
 
 async def test_book_publishes_panel_events(deps):
-    await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None, dryer_vent=True))
+    await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None, dryer_vent=True))
     await wait_for_background(deps, 5)
     assert [e["type"] for e in deps.publish.events] == ["sms_to_customer", "owner_notification"]
     assert deps.publish.events[0]["delivered"] is False  # SMS disabled in demo
@@ -69,15 +75,15 @@ async def test_book_publishes_panel_events(deps):
 
 
 async def test_book_slot_taken_returns_alternatives(deps_busy_dec3_morning):
-    t = await book(deps_busy_dec3_morning, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps_busy_dec3_morning, SLOT, CUSTOMER, QuoteParams(1, 14, None))
     assert "no longer available" in t and "Thu, Dec 3, 1 PM–5 PM" in t
     assert deps_busy_dec3_morning.publish.events == []
 
 
 async def test_book_invalid_slot_returns_alternatives(deps):
-    t = await book(deps, "2026-12-03T09:00:00-05:00", CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, "2026-12-03T09:00:00-05:00", CUSTOMER, QuoteParams(1, 14, None))
     assert "not a bookable slot" in t and "Thu, Dec 3, 8 AM–12 PM" in t
-    t = await book(deps, "next thursday", CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, "next thursday", CUSTOMER, QuoteParams(1, 14, None))
     assert "not a bookable slot" in t
 
 
@@ -86,21 +92,21 @@ async def test_book_unexpected_error_says_not_booked(deps):
         raise RuntimeError("calendar down")
 
     deps.calendar.create_event = broken_create_event
-    t = await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
     assert "not booked" in t.lower() and "message" in t
     assert deps.notifier.owner_texts == [] and deps.publish.events == []
 
 
 async def test_book_refuses_out_of_area_zip(deps):
     far = Customer("John Smith", "+14045550123", "1 Main St, Beverly Hills", "90210")
-    t = await book(deps, SLOT, far, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, SLOT, far, QuoteParams(1, 14, None))
     assert "outside" in t and deps.calendar.saved == [] and deps.publish.events == []
 
 
 async def test_book_survives_publish_failure():
     deps = make_deps(FakeCalendar())
     deps.publish = RecordingPublish(raises=True)
-    t = await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
     assert "Booked" in t and len(deps.calendar.saved) == 1
 
 
@@ -150,7 +156,7 @@ async def test_book_logs_timings_without_personal_data(caplog):
     notifier = Notifier(settings, CFG, senders=RecordingSenders())
     deps = Deps(PRICES, CFG, FakeCalendar(), notifier, RecordingPublish(), lambda: NOW)
     with caplog.at_level(logging.INFO):
-        await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+        await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
         await wait_for_background(deps, 5)
     text = caplog.text
     assert "Calendar step took" in text
@@ -169,7 +175,7 @@ def make_slow_deps(delay: float):
 
 async def test_book_returns_before_notifications_finish():
     deps, senders = make_slow_deps(0.2)
-    t = await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    t = await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
     assert "Booked" in t and len(deps.calendar.saved) == 1
     assert senders.sent_emails == [] and senders.sent_slack == [] and deps.publish.events == []  # still pending
     await wait_for_background(deps, 5)
@@ -180,7 +186,7 @@ async def test_book_returns_before_notifications_finish():
 
 async def test_wait_for_background_gives_up_after_timeout(caplog):
     deps, senders = make_slow_deps(1)
-    await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+    await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
     with caplog.at_level(logging.WARNING):
         await wait_for_background(deps, 0.05)
     assert "did not finish" in caplog.text
@@ -195,6 +201,42 @@ async def test_background_crash_is_logged_not_raised(caplog):
 
     deps.notifier.confirm_to_customer = broken
     with caplog.at_level(logging.ERROR):
-        await book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
+        await quoted_book(deps, SLOT, CUSTOMER, QuoteParams(1, 14, None))
         await wait_for_background(deps, 5)
     assert "ValueError" in caplog.text and "secret detail" not in caplog.text
+
+
+
+async def test_booking_keeps_the_price_the_caller_heard(deps):
+    # Live call RM_PRGKqqtEzDfy: get_quote(1 system, 14 vents, dryer vent) gave $718, the caller agreed,
+    # then the model called book_appointment without the dryer vent and $589 was booked.
+    # Now the booking takes the price from the last quote of the call, not from a second set of arguments.
+    assert "$718" in quote(deps, QuoteParams(1, 14, None, dryer_vent=True))
+    t = await book(deps, SLOT, CUSTOMER)
+    assert "$718" in t
+    assert "$718" in deps.calendar.saved[0]["description"]
+
+
+async def test_booking_without_a_quote_books_nothing(deps):
+    t = await book(deps, SLOT, CUSTOMER)
+    assert "nothing was booked" in t.lower() and "quote" in t.lower()
+    assert deps.calendar.saved == []
+
+
+async def test_booking_uses_the_latest_quote(deps):
+    quote(deps, QuoteParams(1, 14, None, dryer_vent=True))
+    quote(deps, QuoteParams(1, 14, None))  # the caller dropped the dryer vent and heard the new total
+    assert "$589" in await book(deps, SLOT, CUSTOMER)
+
+
+async def test_failed_quote_does_not_leave_an_old_price(deps):
+    quote(deps, QuoteParams(1, 14, None, dryer_vent=True))
+    assert "cannot" in quote(deps, QuoteParams(0, 14, None)).lower()  # the caller changed details, quote failed
+    assert "nothing was booked" in (await book(deps, SLOT, CUSTOMER)).lower()
+
+
+async def test_quote_is_kept_per_call():
+    # Each call builds its own Deps in main.entrypoint, so a quote never carries over to another caller.
+    first, second = make_deps(FakeCalendar()), make_deps(FakeCalendar())
+    quote(first, QuoteParams(1, 14, None, dryer_vent=True))
+    assert "nothing was booked" in (await book(second, SLOT, CUSTOMER)).lower()

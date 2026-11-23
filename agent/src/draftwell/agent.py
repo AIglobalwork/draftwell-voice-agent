@@ -31,6 +31,7 @@ An email address is optional: offer it for the confirmation, and ask the caller 
 - Check the ZIP code with the service area tool before quoting. If it is outside the area, say so, do not offer a booking, and offer to take a message for the owner.
 - If the caller does not know the number of vents, ask for the approximate square footage of the home first. Do not call the quote tool until you have either the vent count or the square footage.
 - Never calculate or guess prices or times. Use only what the tools return.
+- The booking uses the last estimate from the quote tool. If the caller changes the number of systems, vents or the add-ons after a quote, call the quote tool again and read the new total before the read-back.
 - Every price is an estimate. Always say that the technician confirms the final price on site.
 - Offer appointment times only from the availability tool. If the caller asks about availability for a day, call the availability tool right away, before collecting their other details.
 - If the caller's choice of time could mean more than one slot (for example "the second one" after you have named times more than once), ask for the exact day and time before you go on. Never take a slot from an earlier list on your own.
@@ -109,15 +110,10 @@ class DraftwellAgent(Agent):
         phone: str,
         address: str,
         zip_code: str,
-        systems: int,
-        vents: int | None = None,
-        square_feet: int | None = None,
-        dryer_vent: bool = False,
-        blower: bool = False,
-        antimicrobial: bool = False,
         email: str | None = None,
     ) -> str:
         """Book the appointment. Call this only after you read all the details back and the caller said yes.
+        The price is the last estimate from the quote tool; you do not pass it.
 
         Args:
             slot_start: The start value of the chosen slot, exactly as returned by the availability tool.
@@ -125,18 +121,10 @@ class DraftwellAgent(Agent):
             phone: The caller's phone number.
             address: The street address.
             zip_code: The five-digit ZIP code of the address.
-            systems: Number of HVAC systems.
-            vents: Number of vents, if known.
-            square_feet: Approximate home size, only if the vent count is unknown.
-            dryer_vent: True if dryer vent cleaning was requested.
-            blower: True if blower cleaning was requested.
-            antimicrobial: True if the antimicrobial treatment was requested.
             email: The caller's email address, if they gave one.
         """
         customer = Customer(name, phone, address, zip_code, email)
-        return await flows.book(
-            self.deps, slot_start, customer, QuoteParams(systems, vents, square_feet, dryer_vent, blower, antimicrobial)
-        )
+        return await flows.book(self.deps, slot_start, customer)
 
     @function_tool
     async def take_message_for_owner(self, name: str, phone: str, message: str) -> str:
