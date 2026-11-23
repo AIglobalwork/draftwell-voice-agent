@@ -1,5 +1,7 @@
 # Draftwell Voice Agent
 
+[![CI](https://github.com/AIglobalwork/draftwell-voice-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/AIglobalwork/draftwell-voice-agent/actions/workflows/ci.yml)
+
 Small air duct cleaning companies in the US miss a lot of calls. The crew is on a job, it is evening, or it is the weekend. The customer does not leave a voicemail; they call the next company on the list. Draftwell is a voice AI agent that answers those calls 24/7. It checks the address, gives a price estimate, finds a free time, and books the job into the company calendar. The owner gets an email and a Slack message.
 
 Draftwell is a fictional Atlanta company. This is a portfolio project. The agent, the website and the tests are all in this repository.
@@ -11,6 +13,10 @@ Draftwell is a fictional Atlanta company. This is a portfolio project. The agent
 - **Video (main demo):** _coming soon_ <!-- TODO: add the video link -->
 - **Live site:** https://draftwell-demo.netlify.app. Press "Talk to our AI assistant" and allow the microphone.
   The live demo runs on a small free monthly voice budget (about 50 minutes a month for everyone). If the budget is used up, the agent does not answer and the site says the live demo is paused. The video is the main demo.
+
+![The Draftwell website with the "Talk to our AI assistant" button](docs/images/site.png)
+
+![A call in progress: the conversation and the demo panel with the customer's and the owner's phone](docs/images/call.png)
 
 ## What a call does
 
@@ -76,18 +82,19 @@ I built this with Claude Code as my coding agent. The process:
 1. **Brainstorm and design spec.** The idea, the stack and the website design were agreed before any code. See [`docs/specs/`](docs/specs).
 2. **Implementation plan.** 11 tasks plus a throwaway voice spike, each with exact files, tests and expected results. See [`docs/plans/`](docs/plans).
 3. **Subagent-driven development.** For each task one subagent wrote the code test-first, and a separate reviewer subagent checked it against the plan and for quality. Findings went through a fix loop and a progress log. Rules for the agent are in [`CLAUDE.md`](CLAUDE.md).
-4. **Manual checks by me.** I made all voice calls and checked the real calendar, emails and Slack.
+4. **A separate planning chat with Claude.** It reviewed the plan and every task report, wrote the prompts I gave to Claude Code, and checked commits and deploys. Claude Code did the implementation.
+5. **Manual checks by me.** I made all voice calls and checked the real calendar, emails and Slack.
 
 What happened along the way (who did what is stated in each case):
 
-- **A lock that would not lock.** The first plan prevented double booking with an in-memory lock. A plan review in a separate Claude chat caught that LiveKit can run each call in its own process: the test with a fake calendar would pass and production would have no protection. It became the create-then-re-read check above.
+- **A lock that would not lock.** The first plan prevented double booking with an in-memory lock. A plan review in my planning chat with Claude caught that LiveKit can run each call in its own process: the test with a fake calendar would pass and production would have no protection. It became the create-then-re-read check above.
 - **An unverified mail server.** A review found that the SMTP connection did not verify the server certificate, so the Gmail password could be intercepted. It was fixed in a separate commit before the first real email went out.
 - **"Your message was passed on" when it was not.** A reviewer found that the message tool always told the caller the message reached the owner, even when email and Slack both failed. Claude Code called it minor and proposed to defer it. I decided to fix it at once: a caller who asked for a person would wait for a call that never comes. Now the agent apologizes and reads out the company phone number.
 - **A "flaky" test that was a real bug.** A conversation test failed now and then. Part of it was Gemini overload, but the model also quoted a price without asking for the square footage. Claude Code did not weaken the test. It added a rule to the instructions, as the plan required: fix the instructions, not the test.
 - **Silence after "Yes".** In my first voice call the agent went quiet for 6-7 seconds after I confirmed, so I hung up, although the booking was made. The booking tool sent two emails and a Slack message before it answered. Claude Code moved the notifications to a background task and added timing logs for each step.
 - **A Windows path in the Dockerfile.** `lk agent dockerfile` on Windows wrote the start path with backslashes. In the JSON form of `CMD`, `\d` is not valid, so the container would not start. Claude Code caught this before the first deploy.
 - **The caller's first words.** The implementer of the public token route also turned off data publishing. The task reviewer noticed that LiveKit sends the audio recorded while the agent joins as a data stream, so the caller's first words would be lost. It was fixed before the site went live.
-- **A goodbye that never played.** On the live site the goodbye at the time limit did not play; the call just ended. Claude Code checked the cloud logs: no timer error, so the goodbye had ended early. The caller's speech had interrupted it, and Gemini Live ignores the "do not interrupt" flag. The fix mutes the caller before the goodbye. Reviewing that fix, I noticed the new 30-second warning was outside the `try/finally`, so an error there would leave the call with no time limit. That was fixed with its own test.
+- **A goodbye that never played.** On the live site the goodbye at the time limit did not play; the call just ended. Claude Code checked the cloud logs: no timer error, so the goodbye had ended early. The caller's speech had interrupted it, and Gemini Live ignores the "do not interrupt" flag. The fix mutes the caller before the goodbye. A review of that fix in my planning chat with Claude caught that the new 30-second warning was outside the `try/finally`, so an error there would leave the call with no time limit. That was fixed with its own test.
 
 Other decisions that were mine: the niche and the stack (LiveKit over Vapi or a fully local setup, so all the work is visible in the repository), prices only in code, SMS off with the reason in the README, the video as the main demo because of the voice budget, the website design, and keeping the `Co-Authored-By: Claude` line in commits.
 
