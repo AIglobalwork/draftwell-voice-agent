@@ -28,6 +28,10 @@ logger = logging.getLogger("draftwell")
 NOTIFY_WAIT_SECONDS = 20
 SHUTDOWN_TIMEOUT_SECONDS = NOTIFY_WAIT_SECONDS + 5
 
+# Demo call limit: a short warning this many seconds before the end, then a goodbye.
+WARNING_BEFORE_END_SECONDS = 30
+GOODBYE_WAIT_SECONDS = 15
+
 
 def check_service_account_json(proc: JobProcess) -> None:
     """Runs once in each worker process at startup, so a broken secret shows in the logs before
@@ -55,14 +59,25 @@ server = AgentServer(shutdown_process_timeout=SHUTDOWN_TIMEOUT_SECONDS, setup_fn
 
 
 async def end_call_after(session: AgentSession, seconds: int) -> None:
-    """Demo limit: say goodbye when the call has run too long, then end it.
+    """Demo limit: warn the caller 30 s before the end, then say goodbye and end the call.
     The realtime model has no separate TTS, so say() does not work; ask the model to speak instead."""
-    await asyncio.sleep(seconds)
+    await asyncio.sleep(seconds - WARNING_BEFORE_END_SECONDS)
+    session.generate_reply(
+        instructions="Tell the caller in one short sentence that about 30 seconds of demo time are left, so let's wrap up."
+    )
+    await asyncio.sleep(WARNING_BEFORE_END_SECONDS)
     try:
+        # Gemini Live detects the caller's speech on its server, so allow_interruptions=False is ignored.
+        # Muting the caller is what stops a word or a noise from cutting the goodbye short.
+        session.input.set_audio_enabled(False)
         handle = session.generate_reply(
             instructions="Tell the caller in one short sentence that the demo time limit is reached, thank them for calling Draftwell and say goodbye."
         )
-        await asyncio.wait_for(handle.wait_for_playout(), 15)  # do not wait forever for the goodbye
+        await asyncio.wait_for(handle.wait_for_playout(), GOODBYE_WAIT_SECONDS)  # do not wait forever
+        if handle.interrupted:
+            logger.warning("Goodbye was interrupted before it finished")
+    except TimeoutError:
+        logger.warning("Goodbye did not finish in %s s", GOODBYE_WAIT_SECONDS)
     finally:
         session.shutdown()  # always end the call, even if the goodbye failed
 
