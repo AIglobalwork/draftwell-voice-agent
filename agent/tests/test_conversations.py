@@ -178,3 +178,18 @@ async def test_never_guesses_a_title(llm):
         said = agent_text(r1) + " " + agent_text(r2)
         assert not re.search(r"\b(Mr|Mrs|Ms|Miss)\b", said), said
 
+
+async def test_ambiguous_slot_choice_is_confirmed(llm):
+    # Live call: the agent named one slot, the caller said "the second one", and the agent took
+    # the second slot of an earlier list.
+    async with await start(llm) as session:
+        await session.run(user_input=DETAILS + " What times do you have on Thursday December 3rd?")
+        await session.run(user_input="Hmm. Is Friday December 4th at 8 AM free?")
+        r = await session.run(user_input="OK, the second one.")
+        with pytest.raises(AssertionError):
+            r.expect.contains_function_call(name="book_appointment")
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm,
+            intent="Asks the caller to confirm the exact day and time they mean, instead of assuming which slot 'the second one' is.",
+        )
+
