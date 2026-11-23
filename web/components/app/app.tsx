@@ -8,6 +8,7 @@ import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { CallScreen } from '@/components/app/call-screen';
 import { SitePage } from '@/components/app/site-page';
 import { useDebugMode } from '@/hooks/useDebug';
+import { startOrEnd } from '@/lib/call';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -25,13 +26,8 @@ export function App() {
   const startCall = async () => {
     setPaused(false);
     setCallOpen(true);
-    try {
-      await session.start();
-    } catch (error) {
-      // The connection failed: treat the live demo as paused.
-      console.error(error);
-      setPaused(true);
-    }
+    // The connection failed: treat the live demo as paused.
+    if (!(await startOrEnd(session))) setPaused(true);
   };
 
   const onPaused = useCallback(() => setPaused(true), []);
