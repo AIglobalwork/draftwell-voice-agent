@@ -3,6 +3,7 @@ Fake calendar and notifier only. Run with: uv run pytest -m llm -v"""
 
 import asyncio
 import os
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -58,6 +59,16 @@ def make_agent(calendar=None, notifier=None) -> DraftwellAgent:
 async def llm():
     async with google.LLM(model=MODEL, http_options=types.HttpOptions(timeout=120_000)) as model:  # timeout in ms
         yield model
+
+
+DETAILS = (
+    "Hi, I'm John Smith, phone 404 555 0123, 123 Peachtree Street, Atlanta, ZIP 30307. One system, 10 vents, no add-ons."
+)
+
+
+def agent_text(result) -> str:
+    """Everything the agent said in one turn."""
+    return " ".join(e.item.text_content or "" for e in result.events if e.type == "message")
 
 
 async def start(llm, calendar=None, notifier=None) -> AgentSession:
@@ -118,10 +129,7 @@ async def test_discount_request(llm):
 async def test_slot_taken(llm):
     # rival="before": another booking lands in the same slot first, so book_slot raises SlotTakenError
     async with await start(llm, FakeCalendar(rival="before")) as session:
-        await session.run(
-            user_input="Hi, I'm John Smith, phone 404 555 0123, 123 Peachtree Street, Atlanta, ZIP 30307. "
-            "One system, 10 vents, no add-ons. What times do you have on Thursday December 3rd?"
-        )
+        await session.run(user_input=DETAILS + " What times do you have on Thursday December 3rd?")
         r = await session.run(
             user_input="The Thursday 8 AM slot works. No email. Those details are all correct, please book it now."
         )
@@ -155,11 +163,18 @@ async def test_this_thursday_uses_todays_date(llm):
 
 async def test_offers_email_after_slot_choice(llm):
     async with await start(llm) as session:
-        await session.run(
-            user_input="Hi, I'm John Smith, phone 404 555 0123, 123 Peachtree Street, Atlanta, ZIP 30307. "
-            "One system, 10 vents, no add-ons. What times do you have on Thursday December 3rd?"
-        )
+        await session.run(user_input=DETAILS + " What times do you have on Thursday December 3rd?")
         r = await session.run(user_input="The Thursday 8 AM slot works for me.")
         await r.expect.next_event(type="message").judge(
             llm, intent="Asks whether the caller wants the confirmation by email."
         )
+
+
+async def test_never_guesses_a_title(llm):
+    # Live call: speech recognition heard "Mine" for "Mike", and the agent said "Ms. Johnson".
+    async with await start(llm) as session:
+        r1 = await session.run(user_input="Hi, this is Mine Johnson. I'd like to get my air ducts cleaned.")
+        r2 = await session.run(user_input="Sure, my phone number is 404 555 0123.")
+        said = agent_text(r1) + " " + agent_text(r2)
+        assert not re.search(r"\b(Mr|Mrs|Ms|Miss)\b", said), said
+
