@@ -1,102 +1,33 @@
 import { NextResponse } from 'next/server';
-import {
-  AccessToken,
-  type AccessTokenOptions,
-  RoomConfiguration,
-  type VideoGrant,
-} from 'livekit-server-sdk';
+import { createDemoToken } from '@/lib/token';
 
-type ConnectionDetails = {
-  serverUrl: string;
-  roomName: string;
-  participantName: string;
-  participantToken: string;
-};
-
-// NOTE: you are expected to define the following environment variables in `.env.local`:
-const API_KEY = process.env.LIVEKIT_API_KEY;
-const API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.LIVEKIT_URL;
-
-// Explicit dispatch: the agent registered under this name joins every new room.
-const AGENT_NAME = 'draftwell';
+// Public on purpose: see lib/token.ts for why a token from this route is safe to hand out.
 
 // don't cache the results
 export const revalidate = 0;
 
 export async function POST() {
-  // make an exception for the vercel preview environment
-  if (process.env.NODE_ENV !== 'development' && process.env.IS_VERCEL_PREVIEW !== 'true') {
-    throw new Error(
-      'THIS API ROUTE IS INSECURE. DO NOT USE THIS ROUTE IN PRODUCTION WITHOUT AN AUTHENTICATION LAYER.'
-    );
+  const serverUrl = process.env.LIVEKIT_URL;
+  const apiKey = process.env.LIVEKIT_API_KEY;
+  const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+  if (!serverUrl || !apiKey || !apiSecret) {
+    // Log which variable is missing, but never send details or values to the browser.
+    console.error('Token route: LIVEKIT_URL, LIVEKIT_API_KEY or LIVEKIT_API_SECRET is not set');
+    return new NextResponse('Server is not configured', { status: 500 });
   }
 
   try {
-    if (LIVEKIT_URL === undefined) {
-      throw new Error('LIVEKIT_URL is not defined');
-    }
-    if (API_KEY === undefined) {
-      throw new Error('LIVEKIT_API_KEY is not defined');
-    }
-    if (API_SECRET === undefined) {
-      throw new Error('LIVEKIT_API_SECRET is not defined');
-    }
-
-    // The agent name is fixed on the server. Nothing in the request can change it.
-    const roomConfig = new RoomConfiguration({ agents: [{ agentName: AGENT_NAME }] });
-
-    // Generate participant token
-    const participantName = 'user';
-    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
-
-    const participantToken = await createParticipantToken(
-      { identity: participantIdentity, name: participantName },
-      roomName,
-      roomConfig
+    const { roomName, participantIdentity, participantToken } = await createDemoToken(
+      apiKey,
+      apiSecret
     );
-
-    // Return connection details
-    const data: ConnectionDetails = {
-      serverUrl: LIVEKIT_URL,
-      roomName,
-      participantName,
-      participantToken,
-    };
-    const headers = new Headers({
-      'Cache-Control': 'no-store',
-    });
-    return NextResponse.json(data, { headers });
+    return NextResponse.json(
+      { serverUrl, roomName, participantName: participantIdentity, participantToken },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(error);
-      return new NextResponse(error.message, { status: 500 });
-    }
+    console.error('Token route: could not create token', error);
+    return new NextResponse('Could not create token', { status: 500 });
   }
-}
-
-function createParticipantToken(
-  userInfo: AccessTokenOptions,
-  roomName: string,
-  roomConfig: RoomConfiguration | undefined
-): Promise<string> {
-  const at = new AccessToken(API_KEY, API_SECRET, {
-    ...userInfo,
-    ttl: '15m',
-  });
-  const grant: VideoGrant = {
-    room: roomName,
-    roomJoin: true,
-    canPublish: true,
-    canPublishData: true,
-    canSubscribe: true,
-  };
-  at.addGrant(grant);
-
-  if (roomConfig) {
-    at.roomConfig = roomConfig;
-  }
-
-  return at.toJwt();
 }
