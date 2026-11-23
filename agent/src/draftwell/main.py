@@ -9,7 +9,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit.agents import AgentServer, AgentSession, JobContext, JobProcess, cli, inference, room_io
-from livekit.plugins import ai_coustics
+from livekit.plugins import ai_coustics, google
 
 from draftwell.agent import DraftwellAgent
 from draftwell.calendar_client import GoogleCalendarClient
@@ -31,6 +31,9 @@ SHUTDOWN_TIMEOUT_SECONDS = NOTIFY_WAIT_SECONDS + 5
 # Demo call limit: a short warning this many seconds before the end, then a goodbye.
 WARNING_BEFORE_END_SECONDS = 30
 GOODBYE_WAIT_SECONDS = 15
+
+# Voice model for VOICE_PROVIDER=google (the Gemini API itself, without the "google/" prefix).
+GOOGLE_VOICE_MODEL = "gemini-3.8-live"
 
 
 def check_service_account_json(proc: JobProcess) -> None:
@@ -90,6 +93,25 @@ def log_timer_failure(task: asyncio.Task) -> None:
         logger.error("Call timer failed: %s", type(task.exception()).__name__)
 
 
+def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
+    """VOICE_PROVIDER picks who runs the voice model:
+    "livekit" (default): LiveKit Inference, paid from the LiveKit Cloud credits;
+    "google": the Gemini API directly, with its own key (GOOGLE_VOICE_API_KEY)."""
+    provider = os.environ.get("VOICE_PROVIDER") or "livekit"
+    if provider == "livekit":
+        model = os.environ.get("VOICE_MODEL", "google/gemini-3.8-live")
+        logger.info("Voice: %s via LiveKit Inference", model)
+        return inference.RealtimeModel(model=model, voice="Puck")
+    if provider == "google":
+        api_key = os.environ.get("GOOGLE_VOICE_API_KEY")
+        if not api_key:  # never fall back to GOOGLE_API_KEY, the key of the conversation tests
+            raise RuntimeError("VOICE_PROVIDER=google needs GOOGLE_VOICE_API_KEY")
+        logger.info("Voice: %s via the Gemini API", GOOGLE_VOICE_MODEL)
+        # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
+        return google.realtime.RealtimeModel(model=GOOGLE_VOICE_MODEL, voice="Puck", api_key=api_key, vertexai=False)
+    raise ValueError(f"Unknown VOICE_PROVIDER {provider!r}: use 'livekit' or 'google'")
+
+
 def room_options() -> room_io.RoomOptions:
     return room_io.RoomOptions(
         audio_input=room_io.AudioInputOptions(
@@ -119,9 +141,7 @@ async def entrypoint(ctx: JobContext) -> None:
         now=lambda: datetime.now(UTC),
     )
 
-    session = AgentSession(
-        llm=inference.RealtimeModel(model=os.environ.get("VOICE_MODEL", "google/gemini-3.8-live"), voice="Puck")
-    )
+    session = AgentSession(llm=voice_model())
     await session.start(
         agent=DraftwellAgent(deps),
         room=ctx.room,

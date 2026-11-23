@@ -61,6 +61,9 @@ function DemoNote() {
         see how it works
       </a>{' '}
       on GitHub.
+      <span className="mt-1 block">
+        Calls are processed by Google Gemini. Please don&apos;t share real personal information.
+      </span>
     </p>
   );
 }

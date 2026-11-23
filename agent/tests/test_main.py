@@ -151,3 +151,66 @@ async def test_failed_warning_is_logged_and_goodbye_and_shutdown_still_follow(fa
 def test_room_is_deleted_when_the_session_ends():
     # Without this the agent stays in the room after the goodbye and keeps using agent minutes.
     assert main.room_options().delete_room_on_close is True
+
+
+# Voice provider. "livekit" (default) runs Gemini Live through LiveKit Inference;
+# "google" calls the Gemini API directly with a separate free-tier key.
+VOICE_KEY = "test-voice-key-not-real"
+
+
+@pytest.fixture
+def voice_env(monkeypatch):
+    # Dummy LiveKit credentials: inference.RealtimeModel needs them to be built (no network is used).
+    monkeypatch.setenv("LIVEKIT_API_KEY", "test-livekit-key")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "test-livekit-secret")
+    for name in ("VOICE_PROVIDER", "VOICE_MODEL", "GOOGLE_VOICE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI"):
+        monkeypatch.delenv(name, raising=False)
+    # The test key for the conversation tests must never be used for voice.
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key-for-text-tests")
+    return monkeypatch
+
+
+@pytest.mark.parametrize("provider", [None, "", "livekit"])
+def test_default_voice_provider_is_livekit_inference(voice_env, provider):
+    if provider is not None:
+        voice_env.setenv("VOICE_PROVIDER", provider)
+    model = main.voice_model()
+    assert isinstance(model, main.inference.RealtimeModel)
+    assert model.model == "google/gemini-3.8-live"
+
+
+def test_livekit_provider_uses_voice_model(voice_env):
+    voice_env.setenv("VOICE_MODEL", "google/gemini-3.8-live-extended-thinking")
+    assert main.voice_model().model == "google/gemini-3.8-live-extended-thinking"
+
+
+def test_google_provider_calls_the_gemini_api_with_its_own_key(voice_env):
+    voice_env.setenv("VOICE_PROVIDER", "google")
+    voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
+    voice_env.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")  # must not switch us to billed Vertex AI
+    model = main.voice_model()
+    assert isinstance(model, main.google.realtime.RealtimeModel)
+    assert model.model == "gemini-3.8-live"
+    assert model.provider == "Gemini"  # the Gemini API, not Vertex AI
+    assert model._opts.api_key == VOICE_KEY  # the plugin has no public getter for the key
+
+
+def test_google_provider_without_its_key_does_not_fall_back(voice_env):
+    voice_env.setenv("VOICE_PROVIDER", "google")
+    with pytest.raises(RuntimeError, match="GOOGLE_VOICE_API_KEY"):
+        main.voice_model()
+
+
+def test_unknown_voice_provider_fails(voice_env):
+    voice_env.setenv("VOICE_PROVIDER", "openai")
+    with pytest.raises(ValueError, match="VOICE_PROVIDER"):
+        main.voice_model()
+
+
+def test_voice_provider_is_logged_but_the_key_is_not(voice_env, caplog):
+    voice_env.setenv("VOICE_PROVIDER", "google")
+    voice_env.setenv("GOOGLE_VOICE_API_KEY", VOICE_KEY)
+    with caplog.at_level(logging.DEBUG):
+        main.voice_model()
+    assert "Voice: gemini-3.8-live via the Gemini API" in caplog.text
+    assert VOICE_KEY not in caplog.text
