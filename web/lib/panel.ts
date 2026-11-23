@@ -22,3 +22,16 @@ export function parsePanelEvent(raw: string): PanelEvent | null {
   if (typeof text !== 'string' || typeof delivered !== 'boolean') return null;
   return { type, text, delivered };
 }
+
+// Reads one panel event from a text stream. A broken stream (for example the call
+// ended mid-message) gives null instead of an unhandled error in the browser.
+export async function readPanelEvent(reader: {
+  readAll(): Promise<string>;
+}): Promise<PanelEvent | null> {
+  try {
+    return parsePanelEvent(await reader.readAll());
+  } catch (error) {
+    console.warn('Could not read a panel event', error);
+    return null;
+  }
+}

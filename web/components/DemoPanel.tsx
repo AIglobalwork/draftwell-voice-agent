@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSessionContext } from '@livekit/components-react';
-import { PANEL_TOPIC, type PanelEvent, parsePanelEvent } from '@/lib/panel';
+import { PANEL_TOPIC, type PanelEvent, readPanelEvent } from '@/lib/panel';
 
 interface PhoneCardProps {
   title: string;
@@ -40,7 +40,7 @@ export function DemoPanel() {
 
   useEffect(() => {
     room.registerTextStreamHandler(PANEL_TOPIC, async (reader) => {
-      const event = parsePanelEvent(await reader.readAll());
+      const event = await readPanelEvent(reader);
       if (event) setEvents((previous) => [...previous, event]);
     });
     return () => room.unregisterTextStreamHandler(PANEL_TOPIC);
