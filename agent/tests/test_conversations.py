@@ -235,3 +235,49 @@ async def test_email_given_early_is_not_asked_again(llm):
             llm,
             intent="Does not ask whether the caller wants the confirmation by email and does not ask for an email address again.",
         )
+
+
+async def test_no_area_check_before_the_caller_names_a_zip(llm):
+    # Live call: the agent checked a ZIP code the caller had not named and said "outside our service area".
+    # The text model does the same here: it guesses 30030 from "Decatur".
+    async with await start(llm) as session:
+        r = await session.run(user_input="Hi, I want a price. My address is 120 Oak Street, Decatur.")
+        with pytest.raises(AssertionError):
+            r.expect.contains_function_call(name="check_service_area")
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm, intent="Asks for the ZIP code and does not say whether the address is in the service area."
+        )
+
+
+async def test_area_check_uses_the_zip_the_caller_named(llm):
+    async with await start(llm) as session:
+        await session.run(user_input="Hi, I need my air ducts cleaned in Atlanta.")
+        r = await session.run(user_input="My ZIP code is 30307.")
+        r.expect.contains_function_call(name="check_service_area", arguments={"zip_code": "30307"})
+
+
+async def test_day_that_was_not_offered_is_checked(llm):
+    # Live call: "I'm sorry, Friday is not available" without calling the availability tool.
+    async with await start(llm) as session:
+        # The earliest times end on Thursday December 3rd, so Friday has not been offered.
+        await session.run(user_input=DETAILS + " How much is it, and what's the earliest time you have?")
+        r = await session.run(user_input="No, Friday morning works for me.")
+        r.expect.contains_function_call(name="find_available_slots", arguments={"preferred_date": "2026-12-04"})
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm, intent="Offers or confirms a Friday December 4th morning time; does not say that Friday is unavailable."
+        )
+
+
+@pytest.mark.parametrize("heard", ["Freitag Freitag morgen Wurst für mich.", "No, tan que."])
+async def test_unclear_speech_is_asked_again(llm, heard):
+    # Live call: accented English was transcribed like this, right after the agent offered times.
+    async with await start(llm) as session:
+        await session.run(user_input=DETAILS + " How much is it, and what times do you have on Thursday December 3rd?")
+        r = await session.run(user_input=heard)
+        with pytest.raises(AssertionError):
+            r.expect.contains_function_call(name="book_appointment")
+        await r.expect[-1].is_message(role="assistant").judge(
+            llm,
+            intent="In English, says it did not understand or is not sure what the caller said, "
+            "and asks the caller to repeat or confirm it.",
+        )

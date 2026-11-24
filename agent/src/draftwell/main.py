@@ -35,6 +35,7 @@ GOODBYE_WAIT_SECONDS = 15
 
 # Voice model for VOICE_PROVIDER=google (the Gemini API itself, without the "google/" prefix).
 GOOGLE_VOICE_MODEL = "gemini-3.8-live"
+GOOGLE_VOICE_LANGUAGE = "en-US"
 
 
 def check_service_account_json(proc: JobProcess) -> None:
@@ -129,12 +130,16 @@ def voice_model() -> inference.RealtimeModel | google.realtime.RealtimeModel:
     else:
         raise ValueError(f"Unknown VOICE_TURN_DETECTION {turn_detection!r}: use 'server' or 'local'")
     logger.info("Voice: %s via the Gemini API, %s turn detection", GOOGLE_VOICE_MODEL, turn_detection)
+    # Both language settings are hints: the server accepts them, but Google's docs say native audio models
+    # pick the speech language themselves. A live call without them transcribed accented English as German and Spanish.
     # vertexai=False: always the Gemini API (free tier), even if GOOGLE_GENAI_USE_VERTEXAI is set.
     # api_version="v1beta": google-genai defaults to "v1", where the Live API answers HTTP 404
     # (checked with scripts/check_gemini_live.py).
     return google.realtime.RealtimeModel(
         model=GOOGLE_VOICE_MODEL,
         voice="Puck",
+        language=GOOGLE_VOICE_LANGUAGE,
+        input_audio_transcription=genai_types.AudioTranscriptionConfig(language_codes=[GOOGLE_VOICE_LANGUAGE]),
         api_key=api_key,
         vertexai=False,
         api_version="v1beta",

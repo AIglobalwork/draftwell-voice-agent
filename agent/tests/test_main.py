@@ -254,3 +254,11 @@ def test_google_local_turns_come_from_livekit(voice_env):
 def test_unknown_turn_detection_fails(voice_env):
     with pytest.raises(ValueError, match="VOICE_TURN_DETECTION"):
         google_voice(voice_env, "client")
+
+
+@pytest.mark.parametrize("turn_detection", ["server", "local"])
+def test_google_voice_is_set_to_english(voice_env, turn_detection):
+    # Live call: Gemini guessed the language, and accented English was transcribed as German and Spanish.
+    model = google_voice(voice_env, turn_detection)
+    assert model._opts.language == "en-US"  # speech
+    assert model._opts.input_audio_transcription.language_codes == ["en-US"]  # what the caller said
