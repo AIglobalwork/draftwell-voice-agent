@@ -30,7 +30,7 @@ The screenshots are from a booking call on the live site on November 24, 2026 (L
 
 *The owner's notification in Slack.*
 
-**A real call:** [`docs/call-transcript.md`](docs/call-transcript.md) is the transcript of another booking call, made on November 23, 2026. It shows the price bug that was fixed after that call (see [What happened along the way](#what-happened-along-the-way)).
+**A real call:** [`docs/call-transcript.md`](docs/call-transcript.md) is the transcript of the same call as in the screenshots, from the LiveKit session log.
 
 **Live site:** https://draftwell-demo.netlify.app. Press "Talk to our AI assistant" and allow the microphone. The live demo runs on free tiers and a hosted voice model, so it may be paused or offline. The first call after a quiet period can take up to a minute to connect. If the agent does not join in that time, or leaves without speaking, the site says the live demo is paused.
 

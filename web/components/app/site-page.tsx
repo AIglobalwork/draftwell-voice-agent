@@ -56,7 +56,7 @@ function CallButton({ onStartCall }: { onStartCall: () => void }) {
 function DemoNote() {
   return (
     <p className="max-w-[28em] text-sm leading-snug text-[#D9E7E4]">
-      The live demo runs on a small monthly voice budget. If it&apos;s paused,{' '}
+      The live demo runs on free tiers. If it&apos;s paused,{' '}
       <a href={REPO_URL} className="font-semibold !text-white underline">
         see how it works
       </a>{' '}

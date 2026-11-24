@@ -14,7 +14,7 @@ A portfolio project on GitHub that shows the author can work as an AI integrator
 
 **Business problem:** American air duct cleaning companies often do not pick up the phone (crew on a job, evening, weekend) and lose customers. The customer calls the next company on the list.
 
-**Timeline:** 7 days. **Budget:** $0 for development, with a $5-10 reserve for an emergency. Voice runs on LiveKit Inference credits of the Build plan: $2.50 per month, about 50 minutes, a hard cap with no overage charges. So voice is used only for manual checks (23.11: no demo video).
+**Timeline:** 7 days. **Budget:** $0 for development, with a $5-10 reserve for an emergency. Voice runs on LiveKit Inference credits of the Build plan: $2.50 per month, about 50 minutes, a hard cap with no overage charges. So voice is used only for manual checks (23.11: no demo video). (changed 2026-11-24: measured about 27 minutes of calls on $2.50; the live demo now uses the Gemini API Free tier, $0)
 
 ## 2. What the system does
 
@@ -71,10 +71,10 @@ To the owner: a message by email and Slack
 ## 4. Constraints
 
 - **SMS in the US:** any SMS sent from an app through a 10-digit number requires A2P 10DLC registration with a company tax ID. The Sole Proprietor option is available only to senders from the US and Canada. So the Twilio SMS sending code is written in full but switched off by a flag (`SMS_ENABLED=false`). In the demo the SMS text is shown on the page. The README explains why.
-- **Free tiers:** LiveKit Cloud Build (1000 agent minutes per month, no card, one free US number, cold start); Gemini Live through LiveKit Inference ($2.50 credits per month, about 50 minutes). The voice model name is a single value `VOICE_MODEL` in `.env` so it can be replaced.
-- **Result of the first-day spike (19.11):** Gemini Live is not available for the AI Studio key: the direct Google plugin returns HTTP 404. Through LiveKit Inference (`google/gemini-3.8-live`, voice Puck, ai-coustics noise cancellation) the agent answers by voice. Decision: voice goes through LiveKit Inference exactly as in the spike; the AI Studio key (free tier) is used only for text conversation tests.
+- **Free tiers:** LiveKit Cloud Build (1000 agent minutes per month, no card, one free US number, cold start); Gemini Live through LiveKit Inference ($2.50 credits per month, about 50 minutes). The voice model name is a single value `VOICE_MODEL` in `.env` so it can be replaced. (changed 2026-11-24: measured about 27 minutes of calls on $2.50; the live demo now uses the Gemini API Free tier, $0)
+- **Result of the first-day spike (19.11):** Gemini Live is not available for the AI Studio key: the direct Google plugin returns HTTP 404. Through LiveKit Inference (`google/gemini-3.8-live`, voice Puck, ai-coustics noise cancellation) the agent answers by voice. Decision: voice goes through LiveKit Inference exactly as in the spike; the AI Studio key (free tier) is used only for text conversation tests. (changed 2026-11-24: `VOICE_PROVIDER=google` runs voice through the Gemini API directly, experimental, on `v1beta`; LiveKit Inference stays the default)
 - **Text model for tests (checked 19.11):** `gemini-2.5-flash` is closed to new users; `gemini-3.5-flash-lite` answered; `gemini-3.8-flash` exists but answered 503 "high demand". The model name is in `TEST_LLM_MODEL` (default `gemini-3.5-flash-lite`; `gemini-3.8-flash` as an option once it stops returning 503).
-- **Public demo limits sized to 50 minutes per month:** a call lasts up to 5 minutes (300 s); there is no daily call limit. The README and the site say the live demo has a small monthly voice budget. When the credits are exhausted (the agent does not answer), the site says the live demo is paused and links to the GitHub repository (23.11: there is no video).
+- **Public demo limits sized to 50 minutes per month:** a call lasts up to 5 minutes (300 s); there is no daily call limit. The README and the site say the live demo has a small monthly voice budget. When the credits are exhausted (the agent does not answer), the site says the live demo is paused and links to the GitHub repository (23.11: there is no video). (changed 2026-11-24: not sized to ~50 min any more, $2.50 of Inference is about 27 min and the live demo uses the Gemini API Free tier; the README and the site say it runs on free tiers)
 - **The company is fictional.** The name and brand must not match a real company. The demo page carries the text: "Fictional company, demo only".
 - The author is only starting to learn agentic programming, so the code must be simple to read and explain. No unnecessary abstractions.
 
@@ -104,12 +104,12 @@ To the owner: a message by email and Slack
 - A 4-hour slot with a buffer for travel.
 - We write the company website ourselves and agree the design on mockups. The "Handyman's Van" direction (B) was chosen: dark green #0D4A42, yellow #F5C518, fonts Barlow Condensed + Barlow, on the first screen a mockup of a conversation with the agent that ends in a booking. A line-by-line price calculation example (from direction C) was added to this direction.
 - City: Atlanta, Georgia.
-- (19.11) Voice through LiveKit Inference, as in the working spike; the model is a single value `VOICE_MODEL`. The budget is about 50 minutes per month, so voice is used only for manual checks (23.11: no demo video).
+- (19.11) Voice through LiveKit Inference, as in the working spike; the model is a single value `VOICE_MODEL`. The budget is about 50 minutes per month, so voice is used only for manual checks (23.11: no demo video). (changed 2026-11-24: `VOICE_PROVIDER=google` runs voice through the Gemini API directly, experimental, on `v1beta`; LiveKit Inference stays the default; budget: about 27 minutes on $2.50, Free tier $0)
 - (19.11) Conversation tests run on a Gemini text model through the AI Studio key (`GOOGLE_API_KEY`, free tier), not through LiveKit Inference, so they do not spend voice credits.
 - (19.11) Double booking protection without an in-process lock (sessions may run in separate processes): see section 7.
 - (19.11) No daily session limit; a call lasts up to 300 s.
 - (19.11) The agent is deployed to LiveKit Cloud as soon as it works locally. Deploy with project keys, because `lk cloud auth` does not work on Windows.
-- (19.11) The README says directly that the live demo has a small monthly voice budget. (23.11: the video part is dropped, see the next point.)
+- (19.11) The README says directly that the live demo has a small monthly voice budget. (23.11: the video part is dropped, see the next point.) (changed 2026-11-24: it says the live demo runs on free tiers)
 - (23.11) No video. The README is a long-lived portfolio case study, not a 2-minute pitch: it must prove the work on its own, even when the live demo is offline. So the Demo section has screenshots (the site, a call with both panel cards, the calendar event, the Slack message) and a short real call transcript. The site links to the GitHub repository ("see how it works") instead of a video. The README also has a "Results" section (measured facts only) and "What I would do for a real client" (next steps, not built).
 
 Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh (private Claude artifact, not public; the final design is the live site and `docs/images/site.png`)
@@ -149,7 +149,7 @@ Mockups: https://claude.ai/artifact/2KjFptJQ1y9STLvXgXHRxh (private Claude artif
 
 - **Unit tests** (pytest): price calculation, vent estimate from area, ZIP check, finding free slots, double booking protection, including when another session created an event in the same slot slightly earlier (the calendar is faked in tests).
 - **Conversation tests:** scenarios "normal booking", "does not know the number of vents", "ZIP outside the area", "wants a live person", "asks about mold", "asks for a discount / a price that does not exist". We check that the agent called the right tools and did not state numbers that are not in the tool results. These tests always run with a Gemini text model through the AI Studio key (free tier), not through LiveKit Inference, so they do not spend voice credits.
-- **Manual check:** a real call through the demo page, the booking appears in the calendar, email and Slack arrive. Voice calls are kept to a minimum because the budget is about 50 minutes per month.
+- **Manual check:** a real call through the demo page, the booking appears in the calendar, email and Slack arrive. Voice calls are kept to a minimum because the budget is about 50 minutes per month. (changed 2026-11-24: measured about 27 minutes of calls on $2.50; the live demo now uses the Gemini API Free tier, $0)
 - **CI:** GitHub Actions runs the unit tests on every push.
 
 ## 10. What is delivered
